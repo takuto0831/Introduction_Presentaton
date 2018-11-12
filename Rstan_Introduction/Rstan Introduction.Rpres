@@ -1,0 +1,39 @@
+Rstan Introduction
+========================================================
+author: Kotsubo Takuto
+date: November 23th
+autosize: true
+font-family: 'Helvetica
+
+```{r set up, message=FALSE,echo=FALSE}
+# Global options
+library(knitr)
+opts_chunk$set(eval = FALSE)
+opts_knit$set(width=75)
+```
+
+rstanについて
+========================================================
+
+
+========================================================
+
+For more details on authoring R presentations please visit <https://support.rstudio.com/hc/en-us/articles/200486468>.
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+Slide With Code
+========================================================
+
+```{r}
+summary(cars)
+```
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```
