@@ -1,0 +1,67 @@
+---
+title: "Rstan Introduction"
+output: html_document
+---
+
+```{r set up, message=FALSE,echo=FALSE}
+# Global options
+library(knitr)
+opts_chunk$set(eval = FALSE)
+opts_knit$set(width=75)
+```
+
+# rstan について
+
+## 参考文献
+
+- [1](https://rpubs.com/piroyoung/stan01)
+- [2](https://logics-of-blue.com/stanによるベイズ推定の基礎/)
+
+# 実践
+
+## install.packages
+
+```{r}
+install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies=TRUE)
+```
+
+```{r}
+library(rstan)
+```
+
+## check install
+
+```{r}
+fx <- inline::cxxfunction( signature(x = "integer", y = "numeric" ) , '
+    return ScalarReal( INTEGER(x)[0] * REAL(y)[0] ) ;
+' )
+fx( 2L, 5 ) 
+```
+
+## simple model
+
+- verbose: Iterationを表示するか
+- iter: サンプリング数
+- chains: マルコフ連鎖の個数
+
+```{r}
+test <- " 
+parameters{
+  real<lower=0,upper=1> a;
+}
+model{
+  a ~ uniform(0,1);
+}
+"
+
+fit <- stan(model_code = test, 
+            verbose = TRUE, 
+            iter = 500, 
+            chains = 1)
+```
+
+```{r}
+
+```
+
+
