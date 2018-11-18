@@ -64,6 +64,11 @@ stanによりモデルを作成, パラメータ推定(MCMC)を行い, 得られ
 
 ## install.packages
 
+- mac: Xcodeをインストール
+- windows: Rtoolsをインストール
+
+**pcのセッティング完了後**
+
 ```{r eval=FALSE}
 install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies=TRUE)
 ```
@@ -113,7 +118,50 @@ options(mc.cores = parallel::detectCores())
 
 # 第3章: rstanの実行例と解釈
 
-## simple model
+## stan code について1
+
+```{stan, output.var="ex1"}
+data{
+  モデル式に含まれる変数を定義
+}
+transformed data{
+  data ブロックで定義した変数に対して, 変換を行う
+}
+parameters{
+  モデル式に含まれる, サンプリングによって求めたいパラメータを定義
+}
+transformed parameters{
+  parameters ブロックで定義した変数に対して変換等を行う
+}
+model{
+  data や parameters などのブロックで定義された変数を利用して, モデル式を記述
+}
+generated quantities{
+  サンプリングで得られたパラメータを利用して, さらに計算する
+}
+```
+
+## stan code について2
+
+**注意点**
+
+- 各コードには*セミコロン(;)*を入れる
+- コードの最終行には空行を必ず入れる
+- `data`, `parameters`, `model`を主に使用.
+- `generated quantities`はRで処理した方がラク
+
+**一様分布に従う乱数をサンプリングするコード**
+
+```{stan output.var="ex2"}
+parameters{
+  real<lower=0,upper=1> a;
+}
+model{
+  a ~ uniform(0,1); //一様分布
+}
+```
+
+## model の実行例
 
 - verbose: Iterationを表示するか
 - iter: サンプリング数
@@ -131,8 +179,15 @@ fit1 <- rstan::sampling(object = model1,
                  chains = 3)
 ```
 
-```{r}
+## 収束性について
 
+**chain数が3以上で全てのパラメータで Rhat < 1.1となることを収束したと判断する**
+
+```{r}
+fit1 # mcmcサンプリングの平均や四分位点
+traceplot(fit1)
+stan_plot(fit1) #
+stan_dens(fit1) #パラメータの事後分布
 ```
 
 # 第4章: rstanを活用した応用例
