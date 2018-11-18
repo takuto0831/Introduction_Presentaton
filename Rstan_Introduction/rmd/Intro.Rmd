@@ -28,14 +28,37 @@ opts_knit$set(width=75)
 
 ## 統計モデリングの目的
 
-- 解釈: 現象の理由やしくみを, 納得しやすいモデルを基に解釈することができる
+解釈: 現象の理由やしくみを, 納得しやすいモデルを基に解釈することができる
 
-- 予測: 得られたデータから未来のふるまいを予測する. 
+予測: 得られたデータから未来のふるまいを予測する. 
 
-## 参考文献
+- 解釈と予測は無関係でなく, 背景知識とよくマッチしていて, 納得しやすいモデルには頑健性(robustness)がある. 頑健性とは, 構築したモデルを変化させたり, 入力データを変えたりした場合でも解釈や予測が大きく変わらないという性質である.
 
-- [1](https://rpubs.com/piroyoung/stan01)
-- [2](https://logics-of-blue.com/stanによるベイズ推定の基礎/)
+- 機械学習の手法や古典的な手法を比較した時, 統計モデリングの利点は, 複雑な現実の問題に対しても, 予測性能に加えて, 結果の解釈性も高いという点である.
+
+## 確率的プログラミング言語
+
+- 確率的プログラム言語(Probabilistic programming language)とは, 様々な確率分布の関数や尤度計算に特化した関数が用意されており, 確率モデルをデータに当てはめることを目的としたプログラミング言語である.
+
+- モデルの試行錯誤, 多数のモデルの比較や検証時において, Rにおける既存のパッケージ等よりも優れている.
+
+## Stan
+
+- 推定計算アルゴリズム: MCMC 
+
+Hamilotonian Monte Carlo(HMC)の一実装である, No-U-Turn Sampler(NUTS)が使用されている.
+
+- インターフェース: R, Python, MATLAB, Julia, Mathematica等
+
+stanによりモデルを作成, パラメータ推定(MCMC)を行い, 得られた結果の可視化・活用を得意なインターフェイスで行うことができる. モデルの試行錯誤において非常に便利.
+
+- メリット: デバッグのしやすさ, マニュアルの充実さ(version 2.17.0: 637ページ)
+
+## MCMC
+
+- 岩波データサイエンス Vol1を参照する
+
+- 解説動画: https://www.youtube.com/watch?v=-H28H1unn0M
 
 # 第2章: rstanの導入
 
@@ -119,3 +142,4 @@ fit1 <- rstan::sampling(object = model1,
 ## 参考文献
 
 1. 松浦健太郎(2016), 「StanとRでベイズ統計モデリング」共立出版株式会社.
+2. Stan Development Team, Stan Modeling Language User’s Guide and Reference Manual, https://github.com/stan-dev/stan/releases/download/v2.17.0/stan-reference-2.17.0.pdf
