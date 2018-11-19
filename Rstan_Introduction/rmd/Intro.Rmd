@@ -12,8 +12,106 @@ editor_options:
 ```{r set up, message=FALSE,echo=FALSE}
 # Global options
 library(knitr)
-opts_chunk$set(eval = FALSE)
+# opts_chunk$set(eval = FALSE)
 opts_knit$set(width=75)
+```
+
+<!-- 前処理 -->
+
+```{r echo=FALSE,eval=FALSE}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(summarytools)
+library(GGally)
+# input data
+wind_data <- read_csv("csv/Tokyo_2017_wind.csv", skip=6,
+                      col_names = c("date","wind_speed","info1","wind_direction","info2","info3"),
+                      locale=locale(encoding='Shift_JIS'))
+rain_data <- read_csv("csv/Tokyo_2017_rain.csv", skip=5,
+                      col_names = c("date","rain","info1","info2","info3"))
+sun_data <- read_csv("csv/Tokyo_2017_sun.csv", skip=5,
+                     col_names = c("date","sun","info1","info2","info3"))
+temp_data <- read_csv("csv/Tokyo_2017_temp.csv", skip=5,
+                      col_names = c("date","temperature","info1","info2"))
+
+# preprocess
+wind_data <- wind_data %>% 
+  mutate(
+    angle = case_when( 
+      wind_direction == "東" ~ 0,
+      wind_direction == "東北東" ~ 22.5,
+      wind_direction == "北東" ~ 45,
+      wind_direction == "北北東" ~ 67.5,
+      wind_direction == "北" ~ 90,
+      wind_direction == "北北西" ~ 112.5,
+      wind_direction == "北西" ~ 135,
+      wind_direction == "西北西" ~ 157.5,
+      wind_direction == "西" ~ 180,
+      wind_direction == "西南西" ~ 202.5,
+      wind_direction == "南西" ~ 225,
+      wind_direction == "南南西" ~ 247.5,
+      wind_direction == "南" ~ 270,
+      wind_direction == "南南東" ~ 292.5,
+      wind_direction == "南東" ~ 315,
+      TRUE ~ 337.5)) %>% 
+  mutate(wind_theta = angle * pi / 180)
+
+# combine data
+weather_data <- 
+  wind_data %>% 
+  dplyr::select(date,wind_speed,wind_theta) %>% 
+  left_join(rain_data %>% 
+              dplyr::select(date,rain),
+            by="date") %>% 
+  left_join(sun_data %>% 
+              dplyr::select(date,sun),
+            by = "date") %>% 
+  left_join(temp_data %>% 
+              dplyr::select(date,temperature),
+            by = "date") %>% 
+  mutate_all(funs(ifelse(is.na(.),0,.)))
+# check data
+p1 <- weather_data %>% 
+  select(-date) %>% 
+  ggpairs() +
+  labs(title = "2017年, 東京管区気象台(千代田区)の気温・日照時間・降水量・風速・ 風向の散布図") +
+  theme_set(theme_classic(base_size = 18,base_family = "HiraKakuPro-W3")) 
+
+ggsave(file = "output/image/weather_corr_map.png", 
+       plot = p1, dpi = 100, width = 19.73, height = 9.3)
+
+p2 <- weather_data %>% 
+  ggplot(aes(x=as.POSIXct(date),y=temperature)) +
+  geom_line() +
+  scale_x_datetime(breaks = date_breaks("month"), labels = date_format("%Y-%m")) +
+  labs(title = "2017年, 東京管区気象台(千代田区)の気温の時系列図",
+       x = "日付", y = "気温") +
+  theme_set(theme_classic(base_size = 18,base_family = "HiraKakuPro-W3")) 
+
+ggsave(file = "output/image/temperature_time_series.png", 
+       plot = p2, dpi = 100, width = 19.73, height = 9.3)
+# save data
+```
+
+# 第0賞: モチベーション
+
+## 目標
+
+**未来の気温を予測したい!!**
+
+```{r, echo=FALSE, out.width = '90%'}
+knitr::include_graphics("../output/image/temperature_time_series.png")
+```
+
+## 手法
+
+- 時系列手法? 重回帰分析? 階層モデル? 色々試してみる...
+
+<s>(模索しながら作成するので, 結果が出るのかはわかりません)</s>
+
+```{r, echo=FALSE, out.width = '90%'}
+knitr::include_graphics("../output/image/weather_corr_map.png")
 ```
 
 # 第1章: 統計モデリングとStan
@@ -81,7 +179,7 @@ library(rstan)
 
 - インストールできているか, 確認する
 
-```{r}
+```{r eval=FALSE}
 fx <- inline::cxxfunction( signature(x = "integer", y = "numeric" ) , '
     return ScalarReal( INTEGER(x)[0] * REAL(y)[0] ) ;
 ' )
@@ -120,7 +218,7 @@ options(mc.cores = parallel::detectCores())
 
 ## stan code について1
 
-```{stan, output.var="ex1"}
+```{stan, output.var="ex1",eval=FALSE}
 data{
   モデル式に含まれる変数を定義
 }
@@ -152,7 +250,7 @@ generated quantities{
 
 **一様分布に従う乱数をサンプリングするコード**
 
-```{stan output.var="ex2"}
+```{stan output.var="ex2",eval=FALSE}
 parameters{
   real<lower=0,upper=1> a;
 }
@@ -169,7 +267,7 @@ model{
 - thin: 間引きする個数(デフォルト: 1)
 - chains: マルコフ連鎖の個数
 
-```{r}
+```{r eval=FALSE}
 # モデルのコンパイル
 model1 <- rstan::stan_model('stan/simple_model.stan')
 # コンパイルしたモデルを使って, サンプリング
@@ -183,7 +281,7 @@ fit1 <- rstan::sampling(object = model1,
 
 **chain数が3以上で全てのパラメータで Rhat < 1.1となることを収束したと判断する**
 
-```{r}
+```{r eval=FALSE}
 fit1 # mcmcサンプリングの平均や四分位点
 traceplot(fit1)
 stan_plot(fit1) #
@@ -197,4 +295,5 @@ stan_dens(fit1) #パラメータの事後分布
 ## 参考文献
 
 1. 松浦健太郎(2016), 「StanとRでベイズ統計モデリング」共立出版株式会社.
-2. Stan Development Team, Stan Modeling Language User’s Guide and Reference Manual, https://github.com/stan-dev/stan/releases/download/v2.17.0/stan-reference-2.17.0.pdf
+1. 気象庁ホームページ, https://www.data.jma.go.jp/gmd/risk/obsdl/index.php 
+1. Stan Development Team, Stan Modeling Language User’s Guide and Reference Manual, https://github.com/stan-dev/stan/releases/download/v2.17.0/stan-reference-2.17.0.pdf
