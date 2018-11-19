@@ -14,6 +14,8 @@ editor_options:
 library(knitr)
 # opts_chunk$set(eval = FALSE)
 opts_knit$set(width=75)
+# setting directory
+setwd("~/Desktop/Intro_pres/Rstan_Introduction/")
 ```
 
 <!-- 前処理 -->
@@ -92,6 +94,7 @@ p2 <- weather_data %>%
 ggsave(file = "output/image/temperature_time_series.png", 
        plot = p2, dpi = 100, width = 19.73, height = 9.3)
 # save data
+write_csv(weather_data,"csv/Tokyo_2017_weather.csv")
 ```
 
 # 第0賞: モチベーション
@@ -140,7 +143,7 @@ knitr::include_graphics("../output/image/weather_corr_map.png")
 
 - モデルの試行錯誤, 多数のモデルの比較や検証時において, Rにおける既存のパッケージ等よりも優れている.
 
-## Stan
+## Stanについて
 
 - 推定計算アルゴリズム: MCMC 
 
@@ -152,7 +155,7 @@ stanによりモデルを作成, パラメータ推定(MCMC)を行い, 得られ
 
 - メリット: デバッグのしやすさ, マニュアルの充実さ(version 2.17.0: 637ページ)
 
-## MCMC
+## MCMCについて
 
 - 岩波データサイエンス Vol1を参照する
 
@@ -160,7 +163,7 @@ stanによりモデルを作成, パラメータ推定(MCMC)を行い, 得られ
 
 # 第2章: rstanの導入
 
-## install.packages
+## packagesの準備
 
 - mac: Xcodeをインストール
 - windows: Rtoolsをインストール
@@ -175,9 +178,10 @@ install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies=T
 library(rstan)
 ```
 
-## check install
+## rstan の導入確認
 
-- インストールできているか, 確認する
+- インストールできているか, 確認する.
+- インストールできていれば, 10と表示される.
 
 ```{r eval=FALSE}
 fx <- inline::cxxfunction( signature(x = "integer", y = "numeric" ) , '
@@ -186,37 +190,38 @@ fx <- inline::cxxfunction( signature(x = "integer", y = "numeric" ) , '
 fx( 2L, 5 ) 
 ```
 
-## setting
+## 並列処理について
 
-- 並列処理をするためのコード
+- MCMCのアルゴリズムは, chainごとに独立しているので, 各chainを並列で計算し, 最終的にまとめることができる.
+- デバッグ等は並列処理せずに行う.
+
+**並列処理をするためのコード**
 
 ```{r}
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 ```
 
-## Directory
+## 作業ディレクトリの構造について
 
-- ファイル構造について
+- csv, Rmd, stanファイルは分けておく.
+- stan ファイルは複数作成することが多いので, コード内で実行しているモデルがファイル名でわかるように書いておく.
 
 ```
-├── Rstan_Introduction.Rproj
+├── Rproject
 ├── csv
-│   ├── Tokyo_2017_rain.csv
-│   ├── Tokyo_2017_sun.csv
-│   ├── Tokyo_2017_temp.csv
-│   └── Tokyo_2017_wind.csv
+│   └── ???.csv
 ├── rmd
-│   ├── Intro.Rmd
-│   └── Intro.html
+│   └── ???.Rmd
+├── model
+│   └── ???.rds
 └── stan
-    ├── simple_model.rds
-    └── simple_model.stan
+    └── ???.stan
 ```
 
 # 第3章: rstanの実行例と解釈
 
-## stan code について1
+## stan code の概観
 
 ```{stan, output.var="ex1",eval=FALSE}
 data{
@@ -239,14 +244,13 @@ generated quantities{
 }
 ```
 
-## stan code について2
+## stan code について
 
 **注意点**
 
-- 各コードには*セミコロン(;)*を入れる
-- コードの最終行には空行を必ず入れる
-- `data`, `parameters`, `model`を主に使用.
-- `generated quantities`はRで処理した方がラク
+- 各コードには*セミコロン(;)*, コードの最終行には空行を必ず入れる
+- データを表す変数の先頭の文字を大文字に, パラメータを表す変数の先頭の文字を小文字にする.
+- `data`, `parameters`, `model`を主に使用, `generated quantities`はRで処理した方がラク
 
 **一様分布に従う乱数をサンプリングするコード**
 
@@ -259,33 +263,55 @@ model{
 }
 ```
 
-## model の実行例
+## モデルのコンパイル, 保存
 
-- verbose: Iterationを表示するか
-- iter: サンプリング数
-- warmup: サンプリングに使用しない期間(デフォルト: iter/2)
-- thin: 間引きする個数(デフォルト: 1)
-- chains: マルコフ連鎖の個数
+- モデルのコンパイルには時間がかかるので, rdsファイルとして保存しておく.
 
 ```{r eval=FALSE}
-# モデルのコンパイル
-model1 <- rstan::stan_model('stan/simple_model.stan')
-# コンパイルしたモデルを使って, サンプリング
-fit1 <- rstan::sampling(object = model1,
-                 verbose = TRUE, 
-                 iter = 500, 
-                 chains = 3)
+model1 <- rstan::stan_model('stan/simple_model.stan') # モデルのコンパイル
+saveRDS(model1, "model/simple_model.rds") # モデルの保存
+```
+
+## サンプリングについて
+
+- verbose: Iterationを表示するか (デフォルト: FALSE)
+- iter: サンプリング数 (デフォルト: 2000)
+- warmup: サンプリングに使用しない期間 (デフォルト: iter/2)
+- thin: 間引きする個数 (デフォルト: 1)
+- chains: マルコフ連鎖の個数 (デフォルト: 4)
+
+```{r echo=FALSE}
+model1 <- readRDS("../model/simple_model.rds") # モデルの読み込み
+fit1 <- rstan::sampling(object = model1, # サンプリング
+                        verbose = TRUE, 
+                        iter = 500, 
+                        chains = 3)
 ```
 
 ## 収束性について
 
-**chain数が3以上で全てのパラメータで Rhat < 1.1となることを収束したと判断する**
+- **chain数が3以上で全てのパラメータで Rhat < 1.1となることを収束したと判断する**
+- Rhatとは, 複数のchainの結果から, MCMCサンプルの分散を比較して検出され,  MCMCの収束を評価する指標の一つである. (詳しくは参考文献の[2]を参照)
+
+```{r}
+fit1
+```
 
 ```{r eval=FALSE}
 fit1 # mcmcサンプリングの平均や四分位点
 traceplot(fit1)
 stan_plot(fit1) #
 stan_dens(fit1) #パラメータの事後分布
+```
+
+```{r eval=FALSE}
+library(ggmcmc)
+df_param <- ggs(fit1)
+
+p1 <- ggs_histogram(fit1) # 事後分布のヒストグラム
+p2 <- ggs_autocorrelation(fit1) # 事後分布の自己相関
+p3 <- ggs_geweke(fit1) # Gewekeの診断方法
+p4 <- ggs_Rhat(fit1) + xlab("R_hat") # 各パラメータのRhatのばらつき
 ```
 
 # 第4章: rstanを活用した応用例
@@ -295,5 +321,6 @@ stan_dens(fit1) #パラメータの事後分布
 ## 参考文献
 
 1. 松浦健太郎(2016), 「StanとRでベイズ統計モデリング」共立出版株式会社.
+1. Gelman, A. (2013). *Bayesian Data Analysis, Third Edition*. Chapman and Hall/CRC. 
 1. 気象庁ホームページ, https://www.data.jma.go.jp/gmd/risk/obsdl/index.php 
 1. Stan Development Team, Stan Modeling Language User’s Guide and Reference Manual, https://github.com/stan-dev/stan/releases/download/v2.17.0/stan-reference-2.17.0.pdf
