@@ -1,0 +1,64 @@
+---
+title: "Bayes Inference Introduction"
+date: "`r Sys.Date()`"
+author: "Takuto Kotsubo"
+output:
+  ioslides_presentation:
+    widescreen: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r set up, message=FALSE,echo=FALSE}
+# Global options
+library(knitr)
+# opts_chunk$set(eval = FALSE)
+opts_knit$set(width=75)
+# setting directory
+setwd("~/Desktop/Intro_pres/Rstan_Introduction/")
+```
+
+# 第1章: ベイズ統計
+
+## ベイズ統計とは?
+
+- データだけでなく, データの背後にある要素(パラメータなど)も確率的に生成されると仮定する.
+
+## 信頼区間と信用区間?
+
+- 信頼区間(confidence interval): 95%信頼区間は, 標本抽出して95%信頼区間を計算するという操作を100回繰り返した時に, そのうち95回はその区間に母平均が含まれるような区間のこと.
+
+- 信用区間(credible interval): 母平均の事後確率分布において, 真の値が95%の確率で含まれる区間のこと.
+
+**信用区間はベイズ主義の考えに基づく(ベイズ主義:パラメータも確率分布から生成されると考える)**
+
+## 最尤推定の関係性
+
+- ベイズの枠組みでは$X$の事後分布$p(x|y)$そのものが答えとなるが, 一つの推定値を答えとしたい場合, 事後分布$p(x|y)$, もしくは$p(y|x)p(x)$を最大にする$x=x^*$を推定値とする**(MAP推定値)**
+
+- 事前分布$p(x)$が無情報事前分布などであれば, MAP推定値は, $p(y|x)$を最大にする$x=x^*$を推定値とする**(最尤法)**によるパラメータ推定とほぼ一致する.
+
+## MCMCとMAP推定値
+
+- MCMCはMAP推定値との相性があまりよくない. MCMCは事後分布からのサンプリングのための道具であって, 最適化手法では無い!
+
+- MCMCを使う場合に, 一つの推定値を求める場合には, 事後分布による期待値や目的変数の周辺分布の中央値やモードを用いる. (なんでだろう??)
+
+# 階層ベイズ
+
+## 階層ベイズとは?
+
+- パラメータ$X$の値が確率分布$p(x)$から生成され, 次にデータ$Y$の値が$p(y|x)$から生成され, という様な二段階の生成過程を, さらに多段階化して考えること！
+
+- $Y_{ij}$: 各店舗($i$), 各人の売り上げ($j$), $X_i$: 店舗($i$)の売り上げ, $W_1$: 店舗全体の平均値, $W_2$: 店舗間の分散,$S$: $W_1,W_2$の事前分布を決めるパラメータと設定した場合, 
+
+**S -> W -> X -> Y**というような生成過程を仮定する.
+
+# 第5章: まとめ
+
+## 参考文献
+
+1. 松浦健太郎(2016), 「StanとRでベイズ統計モデリング」共立出版株式会社.
+1. Gelman, A. (2013). *Bayesian Data Analysis, Third Edition*. Chapman and Hall/CRC. 
+1. 気象庁ホームページ, https://www.data.jma.go.jp/gmd/risk/obsdl/index.php 
+1. Stan Development Team, Stan Modeling Language User’s Guide and Reference Manual, https://github.com/stan-dev/stan/releases/download/v2.17.0/stan-reference-2.17.0.pdf
