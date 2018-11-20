@@ -12,7 +12,8 @@ editor_options:
 ```{r set up, message=FALSE,echo=FALSE}
 # Global options
 library(knitr)
-opts_chunk$set(message = FALSE)
+opts_chunk$set(message = FALSE,
+               eval = FALSE)
 opts_knit$set(width=75)
 # setting directory
 setwd("~/Desktop/Intro_pres/Bayes_Introduction/")
@@ -26,6 +27,27 @@ library(ggmcmc)
 library(rstan)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
+```
+
+# 第0章: 使用データについて
+
+## 給食の種類によって, 成績が変わるのか？
+
+- 仮想データを使用して, 階層ベイズを試してみる.
+- pref: 県, N: 対象者数, mean.Y: 対象者の平均身長, sd.Y: 対象者の身長の標準偏差, Age: 測定の回数(0,1), X: 給食タイプ(0,1)
+- **実際には給食タイプの影響が無いようなデータ**
+
+```{r}
+library(tidyverse)
+load(file = "~/Desktop/Intro_pres/Bayes_Introduction/data/data.Rdata")
+dplyr::glimpse(d)
+```
+
+## データ概要
+
+```{r}
+ggplot(d,aes(x=factor(Age), y=mean.Y, colour = pref,group = pref)) +
+  geom_point(aes(shape = factor(X))) + geom_line() + theme_classic()
 ```
 
 # 第1章: ベイズ統計
@@ -48,45 +70,27 @@ options(mc.cores = parallel::detectCores())
 
 - 事前分布$p(x)$が無情報事前分布などであれば, MAP推定値は, $p(y|x)$を最大にする$x=x^*$を推定値とする**(最尤法)**によるパラメータ推定とほぼ一致する.
 
-## MCMCとMAP推定値
+## MCMCにおける推定量いろいろ
+
+MCMCにおける推定量の扱い方!
+
+- 事後確率最大値(MAP: Maximum a Posterior): 最頻値として扱うことができる
+- 事後中央値(MED: Posterior Median): 中央値として扱うことができる
+- 事後期待値(EAP: Expected a Posterior): 平均値として扱うことができる
+
+##  MCMCとMAP推定値
 
 - MCMCはMAP推定値との相性があまりよくない. MCMCは事後分布からのサンプリングのための道具であって, 最適化手法では無い!
 
-- MCMCを使う場合に, 一つの推定値を求める場合には, 事後分布による期待値や目的変数の周辺分布の中央値やモードを用いる. (なんでだろう??)
+- MCMCを使う場合に, 一つの推定値を求める場合には, 事後分布による期待値(EAP) や目的変数の周辺分布の中央値やモードを用いる.
 
-# 階層ベイズ
-
-## 階層ベイズとは?
-
-- パラメータ$X$の値が確率分布$p(x)$から生成され, 次にデータ$Y$の値が$p(y|x)$から生成され, という様な二段階の生成過程を, さらに多段階化して考えること！
-
-- $Y_{ij}$: 各店舗($i$), 各人の売り上げ($j$), $X_i$: 店舗($i$)の売り上げ, $W_1$: 店舗全体の平均値, $W_2$: 店舗間の分散,$S$: $W_1,W_2$の事前分布を決めるパラメータと設定した場合, 
-
-**S -> W -> X -> Y**というような生成過程を仮定する.
-
-## 実行例: 給食の種類によって, 成績が変わるのか？
-
-- 仮想データを使用して, 階層ベイズを試してみる.
-- pref: 県, N: 対象者数, mean.Y: 対象者の平均身長, sd.Y: 対象者の身長の標準偏差, Age: 測定の回数(0,1), X: 給食タイプ(0,1)
-
-```{r}
-library(tidyverse)
-load(file = "~/Desktop/Intro_pres/Bayes_Introduction/data/data.Rdata")
-dplyr::glimpse(d)
-```
-
-## データ概要
-
-```{r}
-ggplot(d,aes(x=factor(Age), y=mean.Y, colour = pref,group = pref)) +
-  geom_point(aes(shape = factor(X))) + geom_line() + theme_classic()
-```
+# 第2章: 一般化線形モデルとベイズ
 
 ## 一般化線形モデル
 
-$$mean.Y = \beta_1 + \beta_2 A_i + \beta_3 A_i X_j$$
+$$\mu_{i,j} = \beta_1 + \beta_2 A_i + \beta_3 A_i X_j$$
 
-**「乙タイプの給食を食べている学校の方が乙タイプの学校よりもおよそ1.72低い??」**
+**「給食タイプ1を食べている学校の方がタイプ2の学校よりもおよそ1.72低い??」**
 
 ```{r}
 d %>% glm(mean.Y ~ 1 + Age + Age:X, data = .) %>% 
@@ -105,42 +109,177 @@ d_list <- list(N = 2,
                X = t(matrix(d$X, length(unique(d$pref)), 2)),
                Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
 # コンパイル
-model <- stan_model("stan/bayes_model.stan")
+model1 <- stan_model("stan/bayes_model.stan",auto_write = FALSE)
 # サンプリング
-fit <- rstan::sampling(object = model,
-                       data = d_list,
-                       verbose = TRUE, 
-                       iter = 3000, 
-                       chains = 3)
+fit1 <- rstan::sampling(object = model1,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 3000, 
+                        chains = 3)
+```
+
+## サンプリング結果の確認
+
+- 一般化線形モデルと同じような結果が得られた!! (パラメータの平均値参照)
+- Rhatを確認する
+
+```{r}
+fit1
 ```
 
 ## 収束性の確認
 
 ```{r}
-fit %>% traceplot()
+fit1 %>% traceplot()
 ```
 
-## ggmcmc package
+## ggmcmc package: basic plot
 
-- plot
+- 扱いにくいstanの型を, data.frame型に変更する
 
 ```{r}
-df_param <- ggs(fit)
-p1 <- ggs_histogram(df_param)
-p2 <- ggs_autocorrelation(df_param)
-p3 <- ggs_geweke(df_param) # Gewekeの診断方法
-p4 <- ggs_Rhat(df_param) + xlab("R_hat") # 各パラメータのRhatのばらつき
+df_param1 <- ggs(fit1)
+```
+
+- 可視化いろいろ..
+
+```{r}
+p1 <- ggs_histogram(df_param1) # ヒストグラム
+p2 <- ggs_autocorrelation(df_param1) # 自己相関
+p3 <- ggs_density(df_param1) # 密度分布
+p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
 gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
 ```
 
-- パラメータの信用区間
+## ggmcmc package: paired plot
 
 ```{r}
-ci(df_param) %>% knitr::kable(digits = 4)
+ggs_pairs(df_param1, lower = list(continuous = "density"))
 ```
 
+## ggmcmc package: credible intervals
 
-# 第5章: まとめ
+- ベイズ信頼区間
+
+```{r}
+ci(df_param1, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>% 
+  knitr::kable(digits = 4)
+```
+
+# 第3章: 階層ベイズ
+
+## 階層ベイズとは?
+
+- パラメータ$X$の値が確率分布$p(x)$から生成され, 次にデータ$Y$の値が$p(y|x)$から生成され, という様な二段階の生成過程を, さらに多段階化して考えること！
+
+- $Y_{ij}$: 各店舗($i$), 各人の売り上げ($j$), $X_i$: 店舗($i$)の売り上げ, $W_1$: 店舗全体の平均値, $W_2$: 店舗間の分散,$S$: $W_1,W_2$の事前分布を決めるパラメータと設定した場合, 
+
+**S -> W -> X -> Y**というような生成過程を仮定する.
+
+## 階層ベイズモデルとしての考え方1
+
+- 1回目と2回目の身長差を統計モデルの応答変数にすればよい?
+欠損値があり, 個人も特定できない場合不可能..
+
+- 各県の標準偏差, 標本サイズを利用して20個の平均値の推定値の不確かさ(標準誤差)を表現する.
+身長の平均値$Y$は標準誤差$S_{i,j}^2$を用いて, 以下で表現する
+
+$$Y_{i,j} \sim N(\mu_{i,j}, S_{i,j}^2)$$
+
+- 階層ベイズモデルとしては, 以下のように考える.
+
+$$\mu_{i,j} = \beta_1 + \gamma_{1,j} + (\beta_2 + \beta_3 X_j + \gamma_{2,j}) A_i$$
+
+## 階層ベイズモデルとしての考え方2
+
+一般化線形モデルとの違いは, $\gamma_{i,j}$が含まれていることであり, $i$回目の測定における県ごとの身長差を表している. パラメータの事前分布は以下で設定する
+
+$$\gamma_{i,j} \sim N(0,\sigma_i^2)$$
+
+このように事前分布である$\gamma_{i,j}$に対して, さらに$\sigma_i$を用いて階層的にパラメータを設定したモデルを階層ベイズモデルと呼ぶ.
+
+## Rstanで階層ベイズモデル
+
+```{r}
+# data
+d_list <- list(N = 2,
+               N_pref = length(unique(d$pref)), # データにおける都道府県の数
+               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
+               Sigma_Y = t(matrix(d$sd.Y/sqrt(d$N), length(unique(d$pref)), 2)), # dim() 2 10... N_r  N_pref
+               X = t(matrix(d$X, length(unique(d$pref)), 2)),
+               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
+# コンパイル
+model2 <- stan_model("stan/hierarchical_bayes_model.stan",auto_write = FALSE)
+# サンプリング
+fit2 <- rstan::sampling(object = model2,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 5000, 
+                        chains = 3)
+```
+
+## サンプリング結果の確認
+
+```{r}
+fit2
+```
+
+## 収束性の確認
+
+```{r}
+fit2 %>% traceplot(pars = "beta")
+```
+
+## ggmcmc package: basic plot
+
+- 扱いにくいstanの型を, data.frame型に変更する
+
+```{r}
+df_param2 <- ggs(fit2)
+```
+
+- いろいろplotする!!
+
+```{r}
+p1 <- ggs_histogram(df_param2, family = 'beta') # ヒストグラム
+p2 <- ggs_autocorrelation(df_param2, family = 'beta') # 自己相関
+p3 <- ggs_density(df_param2, family = 'beta') # 密度分布
+p4 <- ggs_running(df_param2, family = 'beta') # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+## ggmcmc package: paired plot
+
+```{r}
+ggs_pairs(df_param2, lower = list(continuous = "density"), family = 'beta')
+```
+
+## ggmcmc package: credible intervals
+
+- ベイズ信頼区間
+
+```{r}
+library(stringr)
+df_param2 %>% 
+  filter(str_detect(Parameter, pattern = "beta")) %>% 
+  ci(thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>% 
+  knitr::kable(digits = 4)
+```
+
+## 結果の解釈
+
+- $\beta_3$(測定回数:2かつ給食タイプ:1)の影響が小さく見積もられた.
+- $\beta_3$のベイズ信頼区間に0が含まれている.
+
+# 第4章: まとめ
+
+## 階層ベイズモデルの利点
+
+- データ数(20)よりもパラメータ数(25)が多い場合, 直線当てはめなどの統計モデルでは推定できないが, 階層ベイズモデルでは可能となる.
+
+- 理由としては階層事前分布($\sigma_1,\sigma_2$)による, 制約を加えたことで$\gamma_{1,j},\gamma_{2,j}$は自由に値を選べない状況になっている.
+
+- 階層事前分布を取り除くとどうなるでしょうか？？
 
 ## 参考文献
 
