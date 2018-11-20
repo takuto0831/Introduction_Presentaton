@@ -12,10 +12,20 @@ editor_options:
 ```{r set up, message=FALSE,echo=FALSE}
 # Global options
 library(knitr)
-# opts_chunk$set(eval = FALSE)
+opts_chunk$set(message = FALSE)
 opts_knit$set(width=75)
 # setting directory
-setwd("~/Desktop/Intro_pres/Rstan_Introduction/")
+setwd("~/Desktop/Intro_pres/Bayes_Introduction/")
+# ggplot setting
+library(tidyverse)
+theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
+```
+
+```{r stan option, message=FALSE,echo=FALSE}
+library(ggmcmc)
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
 ```
 
 # 第1章: ベイズ統計
@@ -54,11 +64,86 @@ setwd("~/Desktop/Intro_pres/Rstan_Introduction/")
 
 **S -> W -> X -> Y**というような生成過程を仮定する.
 
+## 実行例: 給食の種類によって, 成績が変わるのか？
+
+- 仮想データを使用して, 階層ベイズを試してみる.
+- pref: 県, N: 対象者数, mean.Y: 対象者の平均身長, sd.Y: 対象者の身長の標準偏差, Age: 測定の回数(0,1), X: 給食タイプ(0,1)
+
+```{r}
+library(tidyverse)
+load(file = "~/Desktop/Intro_pres/Bayes_Introduction/data/data.Rdata")
+dplyr::glimpse(d)
+```
+
+## データ概要
+
+```{r}
+ggplot(d,aes(x=factor(Age), y=mean.Y, colour = pref,group = pref)) +
+  geom_point(aes(shape = factor(X))) + geom_line() + theme_classic()
+```
+
+## 一般化線形モデル
+
+$$mean.Y = \beta_1 + \beta_2 A_i + \beta_3 A_i X_j$$
+
+**「乙タイプの給食を食べている学校の方が乙タイプの学校よりもおよそ1.72低い??」**
+
+```{r}
+d %>% glm(mean.Y ~ 1 + Age + Age:X, data = .) %>% 
+  broom::tidy() %>% 
+  knitr::kable(format = "markdown", digits = 4)
+```
+
+## Rstanでベイズモデル
+
+```{r}
+# data
+d_list <- list(N = 2,
+               N_pref = length(unique(d$pref)), # データにおける都道府県の数
+               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
+               Sigma_Y = t(matrix(d$sd.Y/sqrt(d$N), length(unique(d$pref)), 2)), # dim() 2 10... N_r  N_pref
+               X = t(matrix(d$X, length(unique(d$pref)), 2)),
+               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
+# コンパイル
+model <- stan_model("stan/bayes_model.stan")
+# サンプリング
+fit <- rstan::sampling(object = model,
+                       data = d_list,
+                       verbose = TRUE, 
+                       iter = 3000, 
+                       chains = 3)
+```
+
+## 収束性の確認
+
+```{r}
+fit %>% traceplot()
+```
+
+## ggmcmc package
+
+- plot
+
+```{r}
+df_param <- ggs(fit)
+p1 <- ggs_histogram(df_param)
+p2 <- ggs_autocorrelation(df_param)
+p3 <- ggs_geweke(df_param) # Gewekeの診断方法
+p4 <- ggs_Rhat(df_param) + xlab("R_hat") # 各パラメータのRhatのばらつき
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+- パラメータの信用区間
+
+```{r}
+ci(df_param) %>% knitr::kable(digits = 4)
+```
+
+
 # 第5章: まとめ
 
 ## 参考文献
 
 1. 松浦健太郎(2016), 「StanとRでベイズ統計モデリング」共立出版株式会社.
 1. Gelman, A. (2013). *Bayesian Data Analysis, Third Edition*. Chapman and Hall/CRC. 
-1. 気象庁ホームページ, https://www.data.jma.go.jp/gmd/risk/obsdl/index.php 
 1. Stan Development Team, Stan Modeling Language User’s Guide and Reference Manual, https://github.com/stan-dev/stan/releases/download/v2.17.0/stan-reference-2.17.0.pdf
