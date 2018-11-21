@@ -12,10 +12,19 @@ editor_options:
 ```{r set up, message=FALSE,echo=FALSE}
 # Global options
 library(knitr)
-# opts_chunk$set(eval = FALSE)
+opts_chunk$set(echo=TRUE,
+               cache = FALSE,
+	             prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
 opts_knit$set(width=75)
 # setting directory
 setwd("~/Desktop/Intro_pres/Rstan_Introduction/")
+# ggplot theme
+library(tidyverse)
+theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
 ```
 
 <!-- 前処理 -->
@@ -104,7 +113,7 @@ write_csv(weather_data,"csv/Tokyo_2017_weather.csv")
 **未来の気温を予測したい!!**
 
 ```{r, echo=FALSE, out.width = '90%'}
-knitr::include_graphics("../output/image/temperature_time_series.png")
+knitr::include_graphics("~/Desktop/Intro_pres/Rstan_Introduction/output/image/temperature_time_series.png")
 ```
 
 ## 手法
@@ -114,7 +123,7 @@ knitr::include_graphics("../output/image/temperature_time_series.png")
 <s>(模索しながら作成するので, 結果が出るのかはわかりません)</s>
 
 ```{r, echo=FALSE, out.width = '90%'}
-knitr::include_graphics("../output/image/weather_corr_map.png")
+knitr::include_graphics("~/Desktop/Intro_pres/Rstan_Introduction/output/image/weather_corr_map.png")
 ```
 
 # 第1章: 統計モデリングとStan
@@ -268,7 +277,7 @@ model{
 - モデルのコンパイルには時間がかかるので, rdsファイルとして保存しておく.
 
 ```{r eval=FALSE}
-model1 <- rstan::stan_model('stan/simple_model.stan') # モデルのコンパイル
+model1 <- rstan::stan_model('stan/simple_model.stan',auto_write = FALSE) # モデルのコンパイル
 saveRDS(model1, "model/simple_model.rds") # モデルの保存
 ```
 
@@ -280,41 +289,103 @@ saveRDS(model1, "model/simple_model.rds") # モデルの保存
 - thin: 間引きする個数 (デフォルト: 1)
 - chains: マルコフ連鎖の個数 (デフォルト: 4)
 
-```{r echo=FALSE}
-model1 <- readRDS("../model/simple_model.rds") # モデルの読み込み
+```{r}
+model1 <- readRDS("~/Desktop/Intro_pres/Rstan_Introduction/model/simple_model.rds") # モデルの読み込み
 fit1 <- rstan::sampling(object = model1, # サンプリング
                         verbose = TRUE, 
-                        iter = 500, 
+                        iter = 1000, 
                         chains = 3)
 ```
 
-## 収束性について
+## サンプリング結果の確認
 
-- **chain数が3以上で全てのパラメータで Rhat < 1.1となることを収束したと判断する**
-- Rhatとは, 複数のchainの結果から, MCMCサンプルの分散を比較して検出され,  MCMCの収束を評価する指標の一つである. (詳しくは参考文献の[2]を参照)
+- **chain数が3以上で全てのパラメータでRhat < 1.1となることにより収束性を判断**
+- Rhatとは, 複数のchainの結果から, MCMCサンプルの分散を比較して検出され,  MCMCの収束を評価する指標の一つ. (詳しくは参考文献の[2]を参照)
 
 ```{r}
 fit1
 ```
 
-```{r eval=FALSE}
-fit1 # mcmcサンプリングの平均や四分位点
-traceplot(fit1)
-stan_plot(fit1) #
-stan_dens(fit1) #パラメータの事後分布
+## 収束性の確認
+
+- chainごとに分離していないか? 網羅的にサンプリングできているか?
+
+```{r}
+traceplot(fit1) 
+```
+
+## ggmcmc package
+
+- ggplotで描けるので, 編集しやすい!
+
+```{r message=FALSE}
+library(ggmcmc)
+df_param1 <- ggs(fit1) # data.frame型に変更
 ```
 
 ```{r eval=FALSE}
-library(ggmcmc)
-df_param <- ggs(fit1)
+p1 <- ggs_histogram(df_param1) # ヒストグラム
+p2 <- ggs_autocorrelation(df_param1) # 自己相関
+p3 <- ggs_density(df_param1) # 密度分布
+p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
 
-p1 <- ggs_histogram(fit1) # 事後分布のヒストグラム
-p2 <- ggs_autocorrelation(fit1) # 事後分布の自己相関
-p3 <- ggs_geweke(fit1) # Gewekeの診断方法
-p4 <- ggs_Rhat(fit1) + xlab("R_hat") # 各パラメータのRhatのばらつき
+## 出力結果
+
+```{r echo=FALSE, fig.width=10}
+p1 <- ggs_histogram(df_param1) # ヒストグラム
+p2 <- ggs_autocorrelation(df_param1) # 自己相関
+p3 <- ggs_density(df_param1) # 密度分布
+p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
 ```
 
 # 第4章: rstanを活用した応用例
+
+## 使用データ
+
+- 東京管区気象台(千代田区)における2017年の風速, 風向, 降雨量, 日照時間, 気温を使用
+
+```{r}
+data <- read.csv("~/Desktop/Intro_pres/Rstan_Introduction/csv/Tokyo_2017_weather.csv")
+glimpse(data)
+```
+
+## 自己回帰モデル
+
+$$ y[i] \sim N( \beta\ y[i-1], \sigma)$$
+
+```{r include=FALSE}
+model_ar <- rstan::stan_model("~/Desktop/Intro_pres/Rstan_Introduction/stan/ar_model.stan",
+                              auto_write = FALSE)
+fit_ar <- sampling(object = model_ar,
+                  data = list(N = NROW(data), Temp = data$temperature),
+                  verbose = TRUE, 
+                  iter = 500, 
+                  chains = 1)
+```
+
+```{r}
+fit_ar
+```
+
+## 結果
+
+```{r include=FALSE}
+df_param1 <- ggs(fit_ar) # data.frame型に変更
+p1 <- ggs_histogram(df_param1) # ヒストグラム
+p2 <- ggs_autocorrelation(df_param1) # 自己相関
+p3 <- ggs_density(df_param1) # 密度分布
+p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+## 単回帰モデル
+
+
+## 重回帰モデル
+
 
 # 第5章: まとめ
 
