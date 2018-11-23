@@ -118,9 +118,7 @@ knitr::include_graphics("~/Desktop/Intro_pres/Rstan_Introduction/output/image/te
 
 ## 手法
 
-- 時系列手法? 重回帰分析? 階層モデル? 色々試してみる...
-
-<s>(模索しながら作成するので, 結果が出るのかはわかりません)</s>
+- 時系列手法? 単回帰分析? 重回帰分析? 色々試してみる...
 
 ```{r, echo=FALSE, out.width = '90%'}
 knitr::include_graphics("~/Desktop/Intro_pres/Rstan_Introduction/output/image/weather_corr_map.png")
@@ -346,48 +344,159 @@ gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
 ## 使用データ
 
 - 東京管区気象台(千代田区)における2017年の風速, 風向, 降雨量, 日照時間, 気温を使用
+- 気温を予測してみる!!
 
 ```{r}
-data <- read.csv("~/Desktop/Intro_pres/Rstan_Introduction/csv/Tokyo_2017_weather.csv")
-glimpse(data)
+weather_data <- read.csv("~/Desktop/Intro_pres/Rstan_Introduction/csv/Tokyo_2017_weather.csv")
+glimpse(weather_data)
 ```
 
 ## 自己回帰モデル
 
-$$ y[i] \sim N( \beta\ y[i-1], \sigma)$$
+$$ temperature_t = \alpha_0 + \alpha_1\ temperature_{t-1} + \varepsilon, \ \varepsilon \sim N(0,\sigma) $$
+$$ temperature_t \sim N( \alpha_0 + \alpha_1\ temperature_{t-1}, \sigma)$$
 
-```{r include=FALSE}
+```{r eval=FALSE}
 model_ar <- rstan::stan_model("~/Desktop/Intro_pres/Rstan_Introduction/stan/ar_model.stan",
                               auto_write = FALSE)
 fit_ar <- sampling(object = model_ar,
-                  data = list(N = NROW(data), Temp = data$temperature),
-                  verbose = TRUE, 
-                  iter = 500, 
-                  chains = 1)
+                   data = list(N = NROW(weather_data), 
+                               Temp = weather_data$temperature),
+                   verbose = TRUE, 
+                   iter = 3000, 
+                   chains = 4)
+saveRDS(fit_ar, "fit/fit_ar.rds") # stan samplingの保存
+```
+
+## サンプリング結果
+
+```{r include=FALSE}
+fit_ar <- readRDS("~/Desktop/Intro_pres/Rstan_Introduction/fit/fit_ar.rds") # samplingの読み込み
 ```
 
 ```{r}
 fit_ar
 ```
 
-## 結果
+## 各種結果
 
-```{r include=FALSE}
+```{r echo=FALSE, fig.width=10}
 df_param1 <- ggs(fit_ar) # data.frame型に変更
 p1 <- ggs_histogram(df_param1) # ヒストグラム
 p2 <- ggs_autocorrelation(df_param1) # 自己相関
-p3 <- ggs_density(df_param1) # 密度分布
-p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
-gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
+#p3 <- ggs_density(df_param1) # 密度分布
+#p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, ncol = 2)
 ```
 
 ## 単回帰モデル
 
+$$ temerature_t = \beta_0 + \beta_1 \ wind speed_t + \varepsilon, \ \varepsilon \sim N(0,\sigma) $$
+$$ temperature_t \sim N( \beta_0 + \beta_1\ windspeed_t, \sigma)$$
+
+```{r eval=FALSE}
+model_sim <- rstan::stan_model("~/Desktop/Intro_pres/Rstan_Introduction/stan/simple_linear_reg.stan",
+                               auto_write = FALSE)
+fit_sim <- sampling(object = model_sim,
+                    data = list(N = NROW(weather_data), 
+                                Temp = weather_data$temperature,
+                                Wind_speed = weather_data$wind_speed),
+                    verbose = TRUE, 
+                    iter = 3000, 
+                    chains = 4)
+saveRDS(fit_sim, "fit/fit_sim.rds") # stan samplingの保存
+```
+
+## サンプリング結果
+
+```{r include=FALSE}
+fit_sim <- readRDS("~/Desktop/Intro_pres/Rstan_Introduction/fit/fit_sim.rds") # samplingの読み込み
+```
+
+```{r}
+fit_sim
+```
+
+## 各種結果
+
+```{r echo=FALSE, fig.width=10}
+df_param1 <- ggs(fit_sim) # data.frame型に変更
+p1 <- ggs_histogram(df_param1) # ヒストグラム
+p2 <- ggs_autocorrelation(df_param1) # 自己相関
+#p3 <- ggs_density(df_param1) # 密度分布
+#p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
 
 ## 重回帰モデル
 
+$$ temerature_t = \beta_0 + \beta_1 \ Variables_t + \varepsilon, \ \varepsilon \sim N(0,\sigma)$$
+$$ temperature_t \sim N( \beta_0 + \beta_1\ Variables_t, \sigma)$$
+
+
+```{r eval=FALSE}
+model_mul <- rstan::stan_model("~/Desktop/Intro_pres/Rstan_Introduction/stan/multi_linear_reg.stan",
+                                auto_write = FALSE)
+fit_mul <- sampling(object = model_mul,
+                    data = list(N = NROW(weather_data), 
+                                P = 4,
+                                Temp = weather_data$temperature,
+                                Variables = 
+                                  weather_data %>% 
+                                  select(-date,-temperature) %>% 
+                                  as.matrix()
+                                  ),
+                    verbose = TRUE, 
+                    iter = 3000, 
+                    chains = 4)
+saveRDS(fit_mul, "fit/fit_mul.rds") # stan samplingの保存
+```
+
+## サンプリング結果
+
+```{r include=FALSE}
+fit_mul <- readRDS("~/Desktop/Intro_pres/Rstan_Introduction/fit/fit_mul.rds") # samplingの読み込み
+```
+
+```{r}
+fit_mul
+```
+
+## 各種結果
+
+- $\beta_1$のみ可視化, 順に風速, 風向, 降雨量, 日照時間
+
+```{r echo=FALSE, fig.width=10}
+df_param1 <- ggs(fit_mul) # data.frame型に変更
+p1 <- ggs_histogram(df_param1,family = 'beta1') # ヒストグラム
+p2 <- ggs_autocorrelation(df_param1,family = 'beta1') # 自己相関
+#p3 <- ggs_density(df_param1,family = 'beta1') # 密度分布
+#p4 <- ggs_running(df_param1,family = 'beta1') # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
 
 # 第5章: まとめ
+
+## 重回帰分析の解釈について
+
+- 回帰係数の解釈
+
+「他の変数に変化がなく, 日照時間が1増えると, 気温が平均的に1.57度増加している」というデータの関係性を述べており, 日照時間と気温の因果関係等は不明である.
+
+- 外挿について
+
+今回のデータでは風速の最大値は12.2となっているので, 例えば風速が15の場合の様な, データの範囲外の予測(外挿)は避けるべきである.
+
+- パラメータの幅の確認
+
+今回の各変数は全て0以上であり, 95%ベイズ信頼区間も0を含んでいない. またbata0 = 10.49であることから, 
+全ての時点での気温の平均パラメータを10.49以上に設定することになる. 実際に気温では0より小さい値も観測しているため, このモデルが不適当であると考えられる.
+
+## まとめ
+
+- 手軽に様々なモデルを作成可能.
+- 一般化してモデルを作成すれば, 汎用的に利用可能
+- 得られた結果の解釈は別途必要
 
 ## 参考文献
 
