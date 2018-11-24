@@ -1,0 +1,35 @@
+---
+title: "MCMC Introduction"
+output: html_document
+---
+
+# 概要
+
+サンプリング手法から, MCMC法まで実装例を加えながらまとめる.
+
+## モンテカルロ法 (Monte Carlo method)
+
+乱数を用いた数値積分法をモンテカルロ法と呼ぶ, モンテカルロ法の基礎は大数の強法則である. 
+
+- 大数の弱法則
+
+$\{X_n\}_{n=1}^\infty$を独立で, 分布が全て同じ確率変数の列とする. $E(X_i) = \mu, V(X_i) = \sigma^2 < \infty$ならば, 
+
+$$S_n = X_1 + \dots + X_n$$
+
+とおくとき, 任意の$\varepsilon > 0$に対して,
+
+$$ \lim_{n \to \infty} P \left( \left| \frac{1}{n} S_n - \mu \right| < \varepsilon \right) = 0$$
+
+- 大数の強法則
+
+$\{X_n\}_{n=1}^\infty$を独立で, 分布が全て同じ確率変数の列とする. $E(X_i) = \mu$であり, 
+
+$$\sum_{n=1}^\infty \frac{Var\{X_n\}}{n^2} < \infty$$
+
+が成立すれば, 以下の大数の強法則が成立する
+
+$$\frac{S_n}{n} = \frac{X_1 + \dots + X_n}{n} \rightarrow \mu \quad (n \rightarrow \infty)$$
+
+
+
