@@ -1,9 +1,16 @@
 # Bayes_Introduction
 
 - ベイズ推定に関するまとめ
-- mcmcについて
+- mcmcの利点等
 - 階層ベイズなど, 複雑なモデルについての備忘録
 - 発表する際にわかりやすくまとめおく
+
+# MCMC_Introduction
+
+- モンテカルロ法
+- 重点サンプリング法
+- MCMC法
+- HMC法, NUTS (できれば)
 
 # Rstan_Introduction
 
@@ -23,6 +30,11 @@
 │   └── stan
 │       ├── bayes_model.stan
 │       └── hierarchical_bayes_model.stan
+├── MCMC_Introduction
+│   ├── MCMC_Introduction.Rproj
+│   └── rmd
+│       ├── Intro.Rmd
+│       └── Intro.html
 └── Rstan_Introduction
     ├── Rstan_Introduction.Rproj
     ├── csv
