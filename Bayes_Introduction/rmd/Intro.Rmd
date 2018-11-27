@@ -2,18 +2,25 @@
 title: "Bayes Inference Introduction"
 date: "`r Sys.Date()`"
 author: "Takuto Kotsubo"
-output:
-  ioslides_presentation:
-    widescreen: true
-editor_options: 
-  chunk_output_type: console
+output: 
+    html_document:
+      md_extensions: -ascii_identifiers
+      toc: true
+      toc_depth: 3
 ---
 
 ```{r set up, message=FALSE,echo=FALSE}
 # Global options
 library(knitr)
-opts_chunk$set(message = FALSE,
-               eval = FALSE)
+opts_chunk$set(echo=TRUE,
+               cache = FALSE,
+	             prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               fig.width = 15,
+               fig.height = 15)
 opts_knit$set(width=75)
 # setting directory
 setwd("~/Desktop/Intro_pres/Bayes_Introduction/")
@@ -34,7 +41,7 @@ options(mc.cores = parallel::detectCores())
 ## 給食の種類によって, 成績が変わるのか？
 
 - 仮想データを使用して, 階層ベイズを試してみる.
-- pref: 県, N: 対象者数, mean.Y: 対象者の平均身長, sd.Y: 対象者の身長の標準偏差, Age: 測定の回数(0,1), X: 給食タイプ(0,1)
+- pref: 県, N: 対象者数, mean.Y: 対象者の平均身長, sd.Y: 対象者の身長の標準偏差, Age: 測定回(0,1), X: 給食タイプ(0,1)
 - **実際には給食タイプの影響が無いようなデータ**
 
 ```{r}
@@ -84,13 +91,17 @@ MCMCにおける推定量の扱い方!
 
 - MCMCを使う場合に, 一つの推定値を求める場合には, 事後分布による期待値(EAP) や目的変数の周辺分布の中央値やモードを用いる.
 
-# 第2章: 一般化線形モデルとベイズ
+# 第2章: 一般化線形モデル
 
 ## 一般化線形モデル
 
-$$\mu_{i,j} = \beta_1 + \beta_2 A_i + \beta_3 A_i X_j$$
+測定$i$回目の, 県$j$での身長の平均$\mu_{i,j}$は, 測定回$Age_i$, 給食タイプ$X_j$を用いて以下で定式化される.
 
-**「給食タイプ1を食べている学校の方がタイプ2の学校よりもおよそ1.72低い??」**
+$$\mu_{i,j} = \beta_1 + (\beta_2 + \beta_3 X_j) Age_i = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
+
+解釈としては, $\beta_1$は$1$回目の測定平均,$\beta_2$は$2$回目での身長の変化量,$\beta_3$は$2$回目かつ給食タイプ$1$の効果量を表す!
+
+## 一般化線形モデルによる推定結果
 
 ```{r}
 d %>% glm(mean.Y ~ 1 + Age + Age:X, data = .) %>% 
@@ -98,24 +109,31 @@ d %>% glm(mean.Y ~ 1 + Age + Age:X, data = .) %>%
   knitr::kable(format = "markdown", digits = 4)
 ```
 
-## Rstanでベイズモデル
+**「給食タイプ1を食べている学校の方がタイプ2の学校よりもおよそ1.72低い??」**
 
-```{r}
+## Rstanで一般化線形モデル
+
+<!-- パラメータは$\beta_1,\beta_2,\beta_3,\sigma$ -->
+$$ mean.Y_{i,j} \sim N(\mu_{i,j},\sigma^2), \quad \mu_{i,j} = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
+
+```{r eval=FALSE}
 # data
 d_list <- list(N = 2,
                N_pref = length(unique(d$pref)), # データにおける都道府県の数
                Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
-               Sigma_Y = t(matrix(d$sd.Y/sqrt(d$N), length(unique(d$pref)), 2)), # dim() 2 10... N_r  N_pref
                X = t(matrix(d$X, length(unique(d$pref)), 2)),
                Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
 # コンパイル
-model1 <- stan_model("stan/bayes_model.stan",auto_write = FALSE)
+model1 <- stan_model("~/Desktop/Intro_pres/Bayes_Introduction/stan/glm_bayes_model.stan",
+                     auto_write = FALSE)
 # サンプリング
 fit1 <- rstan::sampling(object = model1,
                         data = d_list,
                         verbose = TRUE, 
                         iter = 3000, 
                         chains = 3)
+# savefile
+saveRDS(fit1,"~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
 ```
 
 ## サンプリング結果の確認
@@ -124,6 +142,7 @@ fit1 <- rstan::sampling(object = model1,
 - Rhatを確認する
 
 ```{r}
+fit1 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
 fit1
 ```
 
@@ -133,22 +152,20 @@ fit1
 fit1 %>% traceplot()
 ```
 
-## ggmcmc package: basic plot
+## ggmcmc package: ヒストグラム, 自己相関
 
-- 扱いにくいstanの型を, data.frame型に変更する
+- 扱いやすいdata.fram型に変更する
 
 ```{r}
 df_param1 <- ggs(fit1)
 ```
 
-- 可視化いろいろ..
-
 ```{r}
 p1 <- ggs_histogram(df_param1) # ヒストグラム
 p2 <- ggs_autocorrelation(df_param1) # 自己相関
-p3 <- ggs_density(df_param1) # 密度分布
-p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
-gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
+#p3 <- ggs_density(df_param1) # 密度分布
+#p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, ncol = 2)
 ```
 
 ## ggmcmc package: paired plot
@@ -179,28 +196,30 @@ ci(df_param1, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>%
 ## 階層ベイズモデルとしての考え方1
 
 - 1回目と2回目の身長差を統計モデルの応答変数にすればよい?
+
 欠損値があり, 個人も特定できない場合不可能..
 
-- 各県の標準偏差, 標本サイズを利用して20個の平均値の推定値の不確かさ(標準誤差)を表現する.
-身長の平均値$Y$は標準誤差$S_{i,j}^2$を用いて, 以下で表現する
+- 各県の標準偏差, 標本サイズを利用して20個の平均値の推定値の不確かさ(標準誤差)を表現する!!
+
+測定$i$回目, 県$j$の身長の平均値$Y_{i,j}$を標準誤差$S_{i,j}^2$を用いて, 以下で表現する
 
 $$Y_{i,j} \sim N(\mu_{i,j}, S_{i,j}^2)$$
 
-- 階層ベイズモデルとしては, 以下のように考える.
-
-$$\mu_{i,j} = \beta_1 + \gamma_{1,j} + (\beta_2 + \beta_3 X_j + \gamma_{2,j}) A_i$$
+標準誤差$S_{i,j}^2$には, データから得られた標準誤差を使用する.
 
 ## 階層ベイズモデルとしての考え方2
 
-一般化線形モデルとの違いは, $\gamma_{i,j}$が含まれていることであり, $i$回目の測定における県ごとの身長差を表している. パラメータの事前分布は以下で設定する
+$$\mu_{i,j} = \beta_1 + \gamma_{1,j} + (\beta_2 + \beta_3 X_j + \gamma_{2,j}) Age_i$$
+
+一般化線形モデルとの違いは, $\gamma_{i,j}$が含まれていることであり, $i$回目の測定における県ごとの身長差を表している. パラメータの事前分布は$i$回目の標準偏差$\sigma_i$を用いて以下で設定する
 
 $$\gamma_{i,j} \sim N(0,\sigma_i^2)$$
 
-このように事前分布である$\gamma_{i,j}$に対して, さらに$\sigma_i$を用いて階層的にパラメータを設定したモデルを階層ベイズモデルと呼ぶ.
+このように事前分布である$\gamma_{i,j}$に対して, さらに$\sigma_i$のように階層的にパラメータを設定したモデルを階層ベイズモデルと呼ぶ.
 
 ## Rstanで階層ベイズモデル
 
-```{r}
+```{r eval=FALSE}
 # data
 d_list <- list(N = 2,
                N_pref = length(unique(d$pref)), # データにおける都道府県の数
@@ -216,11 +235,14 @@ fit2 <- rstan::sampling(object = model2,
                         verbose = TRUE, 
                         iter = 5000, 
                         chains = 3)
+# save file
+saveRDS(fit2,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
 ```
 
 ## サンプリング結果の確認
 
 ```{r}
+fit2 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
 fit2
 ```
 
@@ -230,7 +252,7 @@ fit2
 fit2 %>% traceplot(pars = "beta")
 ```
 
-## ggmcmc package: basic plot
+## ggmcmc package: ヒストグラム, 自己相関
 
 - 扱いにくいstanの型を, data.frame型に変更する
 
@@ -238,14 +260,12 @@ fit2 %>% traceplot(pars = "beta")
 df_param2 <- ggs(fit2)
 ```
 
-- いろいろplotする!!
-
 ```{r}
 p1 <- ggs_histogram(df_param2, family = 'beta') # ヒストグラム
 p2 <- ggs_autocorrelation(df_param2, family = 'beta') # 自己相関
-p3 <- ggs_density(df_param2, family = 'beta') # 密度分布
-p4 <- ggs_running(df_param2, family = 'beta') # イテレーレションごとの平均値の推移
-gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
+#p3 <- ggs_density(df_param2, family = 'beta') # 密度分布
+#p4 <- ggs_running(df_param2, family = 'beta') # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, ncol = 2)
 ```
 
 ## ggmcmc package: paired plot
@@ -270,6 +290,45 @@ df_param2 %>%
 
 - $\beta_3$(測定回数:2かつ給食タイプ:1)の影響が小さく見積もられた.
 - $\beta_3$のベイズ信頼区間に0が含まれている.
+
+## さらに工夫する!!
+
+- 給食タイプ$1$に変化させた5県における県ごとの差$\gamma_{3,j}$を追加する.
+
+```{r eval=FALSE}
+# data
+d_list <- list(N = 2,
+               N_pref = length(unique(d$pref)), # データにおける都道府県の数
+               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
+               Sigma_Y = t(matrix(d$sd.Y/sqrt(d$N), length(unique(d$pref)), 2)), # dim() 2 10... N_r  N_pref
+               X = t(matrix(d$X, length(unique(d$pref)), 2)),
+               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
+# コンパイル
+model3 <- stan_model("stan/hierarchical_bayes_model2.stan",auto_write = FALSE)
+# サンプリング
+fit3 <- rstan::sampling(object = model3,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 5000, 
+                        chains = 3)
+# save file
+saveRDS(fit3,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
+```
+
+## サンプリング結果の確認
+
+- 結果が悪くなった...
+
+```{r}
+fit3 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
+fit3
+```
+
+## 収束性の確認
+
+```{r}
+fit3 %>% traceplot(pars = "beta")
+```
 
 # 第4章: まとめ
 

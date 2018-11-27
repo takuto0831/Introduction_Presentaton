@@ -9,8 +9,8 @@ data{
 
 parameters{
   real beta[3];
-  real gamma[N,N_pref];
-  real sigma[N];
+  real<lower=0> gamma[N,N_pref];
+  real<lower=0> sigma[N];
 }
 
 model{
@@ -19,7 +19,7 @@ model{
   }
   for(i in 1:N){
     // 階層事前分布
-    sigma[i] ~ uniform(-10000,10000);
+    sigma[i] ~ uniform(0,10000);
     for(j in 1:N_pref){
       gamma[i,j] ~ normal(0,sigma[i]);  
     }
