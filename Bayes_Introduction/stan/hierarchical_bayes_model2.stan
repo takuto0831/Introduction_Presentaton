@@ -19,7 +19,7 @@ model{
   }
   for(i in 1:3){
     // 階層事前分布
-    sigma[i] ~ uniform(0,10000);
+    sigma[i] ~  student_t(4,0,1);
     for(j in 1:N_pref){
       gamma[i,j] ~ normal(0,sigma[i]);  
     }
