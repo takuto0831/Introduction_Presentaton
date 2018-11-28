@@ -91,58 +91,55 @@ MCMCにおける推定量の扱い方!
 
 - MCMCを使う場合に, 一つの推定値を求める場合には, 事後分布による期待値(EAP) や目的変数の周辺分布の中央値やモードを用いる.
 
-# 第2章: 一般化線形モデル
+# 第2章: 線形モデル
 
-## 一般化線形モデル
+## 線形モデル
 
-測定$i$回目の, 県$j$での身長の平均$\mu_{i,j}$は, 測定回$Age_i$, 給食タイプ$X_j$を用いて以下で定式化される.
+測定$i$回目の, 県$j$での身長の平均$\mu_{i,j}$を, 給食タイプ$X_i$を用いて以下で定式化する.
 
-$$\mu_{i,j} = \beta_1 + (\beta_2 + \beta_3 X_j) Age_i = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
+$$\mu_{i,j} = \beta_1 + \beta_2 X_i$$
 
-解釈としては, $\beta_1$は$1$回目の測定平均,$\beta_2$は$2$回目での身長の変化量,$\beta_3$は$2$回目かつ給食タイプ$1$の効果量を表す!
-
-## 一般化線形モデルによる推定結果
+## 線形モデル(lm)による推定結果
 
 ```{r}
-d %>% glm(mean.Y ~ 1 + Age + Age:X, data = .) %>% 
+d %>% lm(mean.Y ~ 1 + X,data = .) %>% 
   broom::tidy() %>% 
   knitr::kable(format = "markdown", digits = 4)
 ```
 
-**「給食タイプ1を食べている学校の方がタイプ2の学校よりもおよそ1.72低い??」**
+**「給食タイプ1を食べている学校の方がタイプ2の学校よりも平均的に約1.38低い??」**
 
-## Rstanで一般化線形モデル
+## Rstanで線形モデル
 
-<!-- パラメータは$\beta_1,\beta_2,\beta_3,\sigma$ -->
-$$ mean.Y_{i,j} \sim N(\mu_{i,j},\sigma^2), \quad \mu_{i,j} = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
+<!-- パラメータは$\beta_1,\beta_2,\sigma$ -->
+$$ mean.Y_{i,j} \sim N(\mu_{i,j},\sigma^2), \quad \mu_{i,j} = \beta_1 + \beta_2 X_i$$
 
 ```{r eval=FALSE}
 # data
-d_list <- list(N = 2,
-               N_pref = length(unique(d$pref)), # データにおける都道府県の数
-               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
-               X = t(matrix(d$X, length(unique(d$pref)), 2)),
-               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
+d_list <- list(N = NROW(d), # データ数
+               Mean_Y = d$mean.Y, # 平均身長データ
+               X = d$X) # 給食タイプ
 # コンパイル
-model1 <- stan_model("~/Desktop/Intro_pres/Bayes_Introduction/stan/glm_bayes_model.stan",
-                     auto_write = FALSE)
+model <- stan_model(
+  "~/Desktop/Intro_pres/Bayes_Introduction/stan/lm_bayes_model.stan",
+  auto_write = FALSE)
 # サンプリング
-fit1 <- rstan::sampling(object = model1,
+fit1 <- rstan::sampling(object = model,
                         data = d_list,
                         verbose = TRUE, 
                         iter = 3000, 
                         chains = 3)
 # savefile
-saveRDS(fit1,"~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
+saveRDS(fit1,"~/Desktop/Intro_pres/Bayes_Introduction/fit/lm_bayes.rds")
 ```
 
 ## サンプリング結果の確認
 
-- 一般化線形モデルと同じような結果が得られた!! (パラメータの平均値参照)
+- 線形モデルと同じような結果が得られた!! (パラメータの平均値参照)
 - Rhatを確認する
 
 ```{r}
-fit1 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
+fit1 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/lm_bayes.rds")
 fit1
 ```
 
@@ -183,7 +180,99 @@ ci(df_param1, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>%
   knitr::kable(digits = 4)
 ```
 
-# 第3章: 階層ベイズ
+# 第3章: 一般化線形モデル
+
+## 一般化線形モデル
+
+測定$i$回目の, 県$j$での身長の平均$\mu_{i,j}$は, 測定回$Age_i$, 給食タイプ$X_j$を用いて以下で定式化される.
+
+$$\mu_{i,j} = \beta_1 + (\beta_2 + \beta_3 X_j) Age_i = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
+
+解釈としては, $\beta_1$は$1$回目の測定平均,$\beta_2$は$2$回目での身長の変化量,$\beta_3$は$2$回目かつ給食タイプ$1$の効果量を表す!
+
+## 一般化線形モデル(glm)による推定結果
+
+```{r}
+d %>% glm(mean.Y ~ 1 + Age + Age:X, data = .) %>% 
+  broom::tidy() %>% 
+  knitr::kable(format = "markdown", digits = 4)
+```
+
+**「給食タイプ1を食べている学校の方がタイプ2の学校よりも平均的に約1.72低い??」**
+
+## Rstanで一般化線形モデル
+
+<!-- パラメータは$\beta_1,\beta_2,\beta_3,\sigma$ -->
+$$ mean.Y_{i,j} \sim N(\mu_{i,j},\sigma^2), \quad \mu_{i,j} = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
+
+```{r eval=FALSE}
+# data
+d_list <- list(N = 2,
+               N_pref = length(unique(d$pref)), # データにおける都道府県の数
+               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
+               X = t(matrix(d$X, length(unique(d$pref)), 2)),
+               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
+# コンパイル
+model <- stan_model("~/Desktop/Intro_pres/Bayes_Introduction/stan/glm_bayes_model.stan",
+                     auto_write = FALSE)
+# サンプリング
+fit2 <- rstan::sampling(object = model,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 3000, 
+                        chains = 3)
+# savefile
+saveRDS(fit2,"~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
+```
+
+## サンプリング結果の確認
+
+- 一般化線形モデルと同じような結果が得られた!! (パラメータの平均値参照)
+- Rhatを確認する
+
+```{r}
+fit2 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
+fit2
+```
+
+## 収束性の確認
+
+```{r}
+fit2 %>% traceplot()
+```
+
+## ggmcmc package: ヒストグラム, 自己相関
+
+- 扱いやすいdata.fram型に変更する
+
+```{r}
+df_param2 <- ggs(fit2)
+```
+
+```{r}
+p1 <- ggs_histogram(df_param2) # ヒストグラム
+p2 <- ggs_autocorrelation(df_param2) # 自己相関
+#p3 <- ggs_density(df_param2) # 密度分布
+#p4 <- ggs_running(df_param2) # イテレーレションごとの平均値の推移
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+## ggmcmc package: paired plot
+
+```{r}
+ggs_pairs(df_param2, lower = list(continuous = "density"))
+```
+
+## ggmcmc package: credible intervals
+
+- ベイズ信頼区間
+
+```{r}
+ci(df_param2, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>% 
+  knitr::kable(digits = 4)
+```
+
+# 第4章: 階層ベイズ
 
 ## 階層ベイズとは?
 
@@ -228,28 +317,28 @@ d_list <- list(N = 2,
                X = t(matrix(d$X, length(unique(d$pref)), 2)),
                Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
 # コンパイル
-model2 <- stan_model("stan/hierarchical_bayes_model.stan",auto_write = FALSE)
+model <- stan_model("stan/hierarchical_bayes_model.stan",auto_write = FALSE)
 # サンプリング
-fit2 <- rstan::sampling(object = model2,
+fit3 <- rstan::sampling(object = model,
                         data = d_list,
                         verbose = TRUE, 
                         iter = 5000, 
                         chains = 3)
 # save file
-saveRDS(fit2,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
+saveRDS(fit3,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
 ```
 
 ## サンプリング結果の確認
 
 ```{r}
-fit2 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
-fit2
+fit3 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
+fit3
 ```
 
 ## 収束性の確認
 
 ```{r}
-fit2 %>% traceplot(pars = "beta")
+fit3 %>% traceplot(pars = "beta")
 ```
 
 ## ggmcmc package: ヒストグラム, 自己相関
@@ -257,21 +346,21 @@ fit2 %>% traceplot(pars = "beta")
 - 扱いにくいstanの型を, data.frame型に変更する
 
 ```{r}
-df_param2 <- ggs(fit2)
+df_param3 <- ggs(fit3)
 ```
 
 ```{r}
-p1 <- ggs_histogram(df_param2, family = 'beta') # ヒストグラム
-p2 <- ggs_autocorrelation(df_param2, family = 'beta') # 自己相関
-#p3 <- ggs_density(df_param2, family = 'beta') # 密度分布
-#p4 <- ggs_running(df_param2, family = 'beta') # イテレーレションごとの平均値の推移
+p1 <- ggs_histogram(df_param3, family = 'beta') # ヒストグラム
+p2 <- ggs_autocorrelation(df_param3, family = 'beta') # 自己相関
+#p3 <- ggs_density(df_param3, family = 'beta') # 密度分布
+#p4 <- ggs_running(df_param3, family = 'beta') # イテレーレションごとの平均値の推移
 gridExtra::grid.arrange(p1, p2, ncol = 2)
 ```
 
 ## ggmcmc package: paired plot
 
 ```{r}
-ggs_pairs(df_param2, lower = list(continuous = "density"), family = 'beta')
+ggs_pairs(df_param3, lower = list(continuous = "density"), family = 'beta')
 ```
 
 ## ggmcmc package: credible intervals
@@ -280,7 +369,7 @@ ggs_pairs(df_param2, lower = list(continuous = "density"), family = 'beta')
 
 ```{r}
 library(stringr)
-df_param2 %>% 
+df_param3 %>% 
   filter(str_detect(Parameter, pattern = "beta")) %>% 
   ci(thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>% 
   knitr::kable(digits = 4)
@@ -305,15 +394,15 @@ d_list <- list(N = 2,
                X = t(matrix(d$X, length(unique(d$pref)), 2)),
                Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
 # コンパイル
-model3 <- stan_model("stan/hierarchical_bayes_model2.stan",auto_write = FALSE)
+model <- stan_model("stan/hierarchical_bayes_model2.stan",auto_write = FALSE)
 # サンプリング
-fit3 <- rstan::sampling(object = model3,
+fit4 <- rstan::sampling(object = model,
                         data = d_list,
                         verbose = TRUE, 
                         iter = 5000, 
                         chains = 3)
 # save file
-saveRDS(fit3,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
+saveRDS(fit4,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
 ```
 
 ## サンプリング結果の確認
@@ -321,17 +410,17 @@ saveRDS(fit3,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rd
 - 結果が悪くなった...
 
 ```{r}
-fit3 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
-fit3
+fit4 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
+fit4
 ```
 
 ## 収束性の確認
 
 ```{r}
-fit3 %>% traceplot(pars = "beta")
+fit4 %>% traceplot(pars = "beta")
 ```
 
-# 第4章: まとめ
+# 第5章: まとめ
 
 ## 階層ベイズモデルの利点
 
