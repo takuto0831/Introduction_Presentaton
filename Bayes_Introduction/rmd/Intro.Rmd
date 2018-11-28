@@ -2,11 +2,15 @@
 title: "Bayes Inference Introduction"
 date: "`r Sys.Date()`"
 author: "Takuto Kotsubo"
-output: 
-    html_document:
-      md_extensions: -ascii_identifiers
-      toc: true
-      toc_depth: 3
+output:
+  rmdformats::readthedown:
+    code_folding: hide
+    self_contained: true
+    thumbnails: false
+    lightbox: false
+    md_extensions: -ascii_identifiers
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r set up, message=FALSE,echo=FALSE}
@@ -272,9 +276,9 @@ ci(df_param2, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>%
   knitr::kable(digits = 4)
 ```
 
-# 第4章: 階層ベイズ
+# 第4章: 階層ベイズモデル
 
-## 階層ベイズとは?
+## 階層ベイズモデルとは?
 
 - パラメータ$X$の値が確率分布$p(x)$から生成され, 次にデータ$Y$の値が$p(y|x)$から生成され, という様な二段階の生成過程を, さらに多段階化して考えること！
 
