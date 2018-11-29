@@ -9,15 +9,17 @@ data{
 
 parameters{
   real beta[3];
-  real<lower=0> gamma[3,N_pref];
-  real<lower=0> sigma[3];
+  real<lower=0> gamma[N,N_pref];
+  real<lower=0> sigma[N];
 }
 
 model{
-  for(i in 1:3){
-    beta[i] ~ uniform(-10000,10000);
-  }
-  for(i in 1:3){
+  // 身長は150cm程度, 2回目の影響は正で(0~10),給食タイプの影響は不明(裾の重い分布) 
+  beta[1] ~ normal(150,10);
+  beta[2] ~ uniform(0,10);
+  beta[3] ~ cauchy(0,10);
+  
+  for(i in 1:N){
     // 階層事前分布
     sigma[i] ~  student_t(4,0,1);
     for(j in 1:N_pref){
@@ -26,7 +28,7 @@ model{
   }
   for(i in 1:N){
     for(j in 1:N_pref){
-      Mean_Y[i,j] ~ normal(beta[1] + gamma[1,j] + (beta[2] + (beta[3] + gamma[3,j])*X[i,j] + gamma[2,j])*Age[i,j],
+      Mean_Y[i,j] ~ normal(beta[1] + gamma[1,j] + (beta[2] + beta[3]*X[i,j] + gamma[2,j])*Age[i,j],
                            Sigma_Y[i,j]);
     }
   }

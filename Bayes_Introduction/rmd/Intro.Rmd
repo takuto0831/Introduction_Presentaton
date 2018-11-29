@@ -384,10 +384,9 @@ df_param3 %>%
 - $\beta_3$(測定回数:2かつ給食タイプ:1)の影響が小さく見積もられた.
 - $\beta_3$のベイズ信頼区間に0が含まれている.
 
-## さらに工夫する!!
+# 第5章 事前情報を組み込む
 
-- 給食タイプ$1$に変化させた5県における県ごとの差$\gamma_{3,j}$を追加する.
-- 階層事前分布には half-t 分布を使用する
+- 階層事前分布の分散パラメータに half-t 分布を使用する
 
 ```{r eval=FALSE}
 # data
@@ -411,7 +410,8 @@ saveRDS(fit4,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rd
 
 ## サンプリング結果の確認
 
-- 結果が悪くなった...
+- 結果が少し変わった!!
+- 得られたサンプリング結果や事前知識を組み込むことができる!!
 
 ```{r}
 fit4 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
@@ -424,7 +424,7 @@ fit4
 fit4 %>% traceplot(pars = "beta")
 ```
 
-# 第5章: まとめ
+# 第6章: まとめ
 
 ## 階層ベイズモデルの利点
 
