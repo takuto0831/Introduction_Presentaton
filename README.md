@@ -1,11 +1,9 @@
-# Bayes_Introduction
+# Hierarchical_Bayes_Introduction
 
-- ベイズ推定に関するまとめ
+- 階層ベイズ推定に関するまとめ
 - mcmcの利点等
-- 階層ベイズなど, 複雑なモデルについての備忘録
-- 発表する際にわかりやすくまとめおく
 
-# MCMC_Introduction
+# MCMC_Algorithm_Introduction
 
 - モンテカルロ法
 - 重点サンプリング法
@@ -20,21 +18,29 @@
 ## Directory
 
 ```
-├── README.md
-├── Bayes_Introduction
+├── Hierarchical_Bayes_Introduction
+│   ├── Bayes_Introduction.Rproj
 │   ├── data
 │   │   └── data.RData
+│   ├── fit
+│   │   ├── glm_bayes.rds
+│   │   ├── hierarchical_bayes.rds
+│   │   ├── hierarchical_bayes2.rds
+│   │   └── lm_bayes.rds
 │   ├── rmd
 │   │   ├── Intro.Rmd
 │   │   └── Intro.html
 │   └── stan
-│       ├── bayes_model.stan
-│       └── hierarchical_bayes_model.stan
-├── MCMC_Introduction
+│       ├── glm_bayes_model.stan
+│       ├── hierarchical_bayes_model.stan
+│       ├── hierarchical_bayes_model2.stan
+│       └── lm_bayes_model.stan
+├── MCMC_algorithm_Introduction
 │   ├── MCMC_Introduction.Rproj
 │   └── rmd
 │       ├── Intro.Rmd
 │       └── Intro.html
+├── README.md
 └── Rstan_Introduction
     ├── Rstan_Introduction.Rproj
     ├── csv
@@ -63,4 +69,5 @@
         ├── multi_linear_reg.stan
         ├── simple_linear_reg.stan
         └── simple_model.stan
+
 ```
