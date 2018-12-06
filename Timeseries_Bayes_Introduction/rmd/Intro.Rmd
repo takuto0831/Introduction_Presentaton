@@ -66,71 +66,35 @@ ggplot(data,aes(x=year, y=width)) +
   geom_point()
 ```
 
-# 第1章: ベイズ統計
+# 第1章: 状態空間モデル
 
-## ベイズ統計とは?
+## 時系列データと状態空間モデル
 
-- データだけでなく, データの背後にある要素(パラメータなど)も確率的に生成されると仮定する.
+- 時系列データでは, ある時点の測定値とその前後の測定値との間に相関(自己相関)が生じうる. つまり, 時間的に独立ではない. このようなデータを独立のものとして扱って統計解析を行うと謝った結論を導いてしまうおそれがあります. このため, 時系列データを扱うさまざまな統計的手法が開発され, 実際に利用されている.状態空間モデルも時系列データを扱うことができる手法の一つである.
 
-## 信頼区間と信用区間?
+- 状態空間モデルの特徴は観測できない状態値によって, 観測データが得られると考えることである. 状態変化を表すモデルをシステムモデル, 観測値が得られる過程を説明するモデルを観測モデルと呼ぶ.
 
-- 信頼区間(confidence interval): 95%信頼区間は, 標本抽出して95%信頼区間を計算するという操作を100回繰り返した時に, そのうち95回はその区間に母平均が含まれるような区間のこと.
+## ローカルレベルモデル
 
-- 信用区間(credible interval): 母平均の事後確率分布において, 真の値が95%の確率で含まれる区間のこと.
+- 状態の値が少しずつ変化する
+- ランダムウォーク・プラス・ノイズモデルあるいはローカルレベルモデルと呼ばれる.
 
-**信用区間はベイズ主義の考えに基づく(ベイズ主義:パラメータも確率分布から生成されると考える)**
+$$
+\begin{eqnarray}
+y_t &=& \alpha_t + \epsilon_t, \quad \epsilon_t \sim Normal(0,\sigma_\epsilon^2) \\
+\alpha_t &=& \alpha_{t-1} + \eta_t, \quad \eta_t \sim Normal(0,\sigma_\eta^2)
+\end{eqnarray}
+$$
 
-## 最尤推定の関係性
-
-- ベイズの枠組みでは$X$の事後分布$p(x|y)$そのものが答えとなるが, 一つの推定値を答えとしたい場合, 事後分布$p(x|y)$, もしくは$p(y|x)p(x)$を最大にする$x=x^*$を推定値とする**(MAP推定値)**
-
-- 事前分布$p(x)$が無情報事前分布などであれば, MAP推定値は, $p(y|x)$を最大にする$x=x^*$を推定値とする**(最尤法)**によるパラメータ推定とほぼ一致する.
-
-## MCMCにおける推定量いろいろ
-
-MCMCにおける推定量の扱い方!
-
-- 事後確率最大値(MAP: Maximum a Posterior): 最頻値として扱うことができる
-- 事後中央値(MED: Posterior Median): 中央値として扱うことができる
-- 事後期待値(EAP: Expected a Posterior): 平均値として扱うことができる
-
-##  MCMCとMAP推定値
-
-- MCMCはMAP推定値との相性があまりよくない. MCMCは事後分布からのサンプリングのための道具であって, 最適化手法では無い!
-
-- MCMCを使う場合に, 一つの推定値を求める場合には, 事後分布による期待値(EAP) や目的変数の周辺分布の中央値やモードを用いる.
-
-# 第2章: 線形モデル
-
-## 線形モデル
-
-測定$i$回目の, 県$j$での身長の平均$\mu_{i,j}$を, 給食タイプ$X_i$を用いて以下で定式化する.
-
-$$\mu_{i,j} = \beta_1 + \beta_2 X_i$$
-
-## 線形モデル(lm)による推定結果
-
-```{r}
-d %>% lm(mean.Y ~ 1 + X,data = .) %>% 
-  broom::tidy() %>% 
-  knitr::kable(format = "markdown", digits = 4)
-```
-
-**「給食タイプ1を食べている学校の方がタイプ2の学校よりも平均的に約1.38低い??」**
-
-## Rstanで線形モデル
-
-<!-- パラメータは$\beta_1,\beta_2,\sigma$ -->
-$$ mean.Y_{i,j} \sim N(\mu_{i,j},\sigma^2), \quad \mu_{i,j} = \beta_1 + \beta_2 X_i$$
+### Rstanでローカルレベルモデル
 
 ```{r eval=FALSE}
 # data
-d_list <- list(N = NROW(d), # データ数
-               Mean_Y = d$mean.Y, # 平均身長データ
-               X = d$X) # 給食タイプ
+d_list <- list(N = NROW(data), # データ数
+               Width = data$width) # 杉の幅
 # コンパイル
 model <- stan_model(
-  "~/Desktop/Intro_pres/Bayes_Introduction/stan/lm_bayes_model.stan",
+  "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/local_level.stan",
   auto_write = FALSE)
 # サンプリング
 fit1 <- rstan::sampling(object = model,
@@ -139,91 +103,72 @@ fit1 <- rstan::sampling(object = model,
                         iter = 3000, 
                         chains = 3)
 # savefile
-saveRDS(fit1,"~/Desktop/Intro_pres/Bayes_Introduction/fit/lm_bayes.rds")
+saveRDS(fit1,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/local_level.rds")
 ```
 
-## サンプリング結果の確認
+### サンプリング結果の確認
 
-- 線形モデルと同じような結果が得られた!! (パラメータの平均値参照)
 - Rhatを確認する
 
 ```{r}
-fit1 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/lm_bayes.rds")
+fit1 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/local_level.rds")
 fit1
 ```
 
-## 収束性の確認
+### 収束性の確認
 
 ```{r}
 fit1 %>% traceplot()
 ```
 
-## ggmcmc package: ヒストグラム, 自己相関
+### 状態値の可視化
 
-- 扱いやすいdata.fram型に変更する
-
-```{r}
-df_param1 <- ggs(fit1)
-```
+- 状態値と95%信用区間
 
 ```{r}
-p1 <- ggs_histogram(df_param1) # ヒストグラム
-p2 <- ggs_autocorrelation(df_param1) # 自己相関
-#p3 <- ggs_density(df_param1) # 密度分布
-#p4 <- ggs_running(df_param1) # イテレーレションごとの平均値の推移
-gridExtra::grid.arrange(p1, p2, ncol = 2)
+fit1 %>% 
+  ggs(family = "alpha") %>% 
+  ci(thin_ci = c(0.025, 0.975)) %>% 
+  bind_cols(data) %>% 
+  ggplot(aes(x=year)) +
+  geom_ribbon(aes(ymin=low,ymax=High),alpha=0.5) +
+  geom_line(aes(y=width,color = "Obs")) +
+  geom_line(aes(y=median,color = "State")) +
+  scale_color_manual(name = "label", 
+                     values = c("Obs" = "blue", "State" = "red"))
 ```
 
-## ggmcmc package: paired plot
+## トレンドモデル
 
-```{r}
-ggs_pairs(df_param1, lower = list(continuous = "density"))
-```
+- 状態の変化量(傾き)が少しずつ変化する
 
-## ggmcmc package: credible intervals
+1. システムモデル
 
-- ベイズ信頼区間
+$$
+\begin{eqnarray}
+\alpha_t - \alpha_{t-1} &=& \alpha_{t-1} - \alpha_{t-2} + \eta_t \\
+\alpha_t &=& 2\alpha_{t-1} - \alpha_{t-2} + \eta_t, \quad \eta_t \sim Normal(0,\sigma_\eta^2)
+\end{eqnarray}
+$$
 
-```{r}
-ci(df_param1, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>% 
-  knitr::kable(digits = 4)
-```
+2.観測モデル
 
-# 第3章: 一般化線形モデル
+$$
+\begin{eqnarray}
+y_t &=& \alpha_t + \epsilon_t, \quad \epsilon_t \sim Normal(0,\sigma_\epsilon^2)
+\end{eqnarray}
+$$
 
-## 一般化線形モデル
-
-測定$i$回目の, 県$j$での身長の平均$\mu_{i,j}$は, 測定回$Age_i$, 給食タイプ$X_j$を用いて以下で定式化される.
-
-$$\mu_{i,j} = \beta_1 + (\beta_2 + \beta_3 X_j) Age_i = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
-
-解釈としては, $\beta_1$は$1$回目の測定平均,$\beta_2$は$2$回目での身長の変化量,$\beta_3$は$2$回目かつ給食タイプ$1$の効果量を表す!
-
-## 一般化線形モデル(glm)による推定結果
-
-```{r}
-d %>% glm(mean.Y ~ 1 + Age + Age:X, data = .) %>% 
-  broom::tidy() %>% 
-  knitr::kable(format = "markdown", digits = 4)
-```
-
-**「給食タイプ1を食べている学校の方がタイプ2の学校よりも平均的に約1.72低い??」**
-
-## Rstanで一般化線形モデル
-
-<!-- パラメータは$\beta_1,\beta_2,\beta_3,\sigma$ -->
-$$ mean.Y_{i,j} \sim N(\mu_{i,j},\sigma^2), \quad \mu_{i,j} = \beta_1 + \beta_2 Age_i + \beta_3 X_j Age_i$$
+### Rstanでトレンドモデル
 
 ```{r eval=FALSE}
 # data
-d_list <- list(N = 2,
-               N_pref = length(unique(d$pref)), # データにおける都道府県の数
-               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
-               X = t(matrix(d$X, length(unique(d$pref)), 2)),
-               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
+d_list <- list(N = NROW(data), # データ数
+               Width = data$width) # 杉の幅
 # コンパイル
-model <- stan_model("~/Desktop/Intro_pres/Bayes_Introduction/stan/glm_bayes_model.stan",
-                     auto_write = FALSE)
+model <- stan_model(
+  "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/trend.stan",
+  auto_write = FALSE)
 # サンプリング
 fit2 <- rstan::sampling(object = model,
                         data = d_list,
@@ -231,216 +176,37 @@ fit2 <- rstan::sampling(object = model,
                         iter = 3000, 
                         chains = 3)
 # savefile
-saveRDS(fit2,"~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
+saveRDS(fit2,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/trend.rds")
 ```
 
-## サンプリング結果の確認
+### サンプリング結果の確認
 
-- 一般化線形モデルと同じような結果が得られた!! (パラメータの平均値参照)
 - Rhatを確認する
 
 ```{r}
-fit2 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/glm_bayes.rds")
+fit2 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/trend.rds")
 fit2
 ```
 
-## 収束性の確認
+### 収束性の確認
 
 ```{r}
 fit2 %>% traceplot()
 ```
 
-## ggmcmc package: ヒストグラム, 自己相関
+### 状態値の可視化
 
-- 扱いやすいdata.fram型に変更する
-
-```{r}
-df_param2 <- ggs(fit2)
-```
+- 状態値と95%信用区間
 
 ```{r}
-p1 <- ggs_histogram(df_param2) # ヒストグラム
-p2 <- ggs_autocorrelation(df_param2) # 自己相関
-#p3 <- ggs_density(df_param2) # 密度分布
-#p4 <- ggs_running(df_param2) # イテレーレションごとの平均値の推移
-gridExtra::grid.arrange(p1, p2, ncol = 2)
+fit2 %>% 
+  ggs(family = "alpha") %>% 
+  ci(thin_ci = c(0.025, 0.975)) %>% 
+  bind_cols(data) %>% 
+  ggplot(aes(x=year)) +
+  geom_ribbon(aes(ymin=low,ymax=High),alpha=0.5) +
+  geom_line(aes(y=width,color = "Obs")) +
+  geom_line(aes(y=median,color = "State")) +
+  scale_color_manual(name = "label", 
+                     values = c("Obs" = "blue", "State" = "red"))
 ```
-
-## ggmcmc package: paired plot
-
-```{r}
-ggs_pairs(df_param2, lower = list(continuous = "density"))
-```
-
-## ggmcmc package: credible intervals
-
-- ベイズ信頼区間
-
-```{r}
-ci(df_param2, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>% 
-  knitr::kable(digits = 4)
-```
-
-# 第4章: 階層ベイズモデル
-
-## 階層ベイズモデルとは?
-
-- パラメータ$X$の値が確率分布$p(x)$から生成され, 次にデータ$Y$の値が$p(y|x)$から生成され, という様な二段階の生成過程を, さらに多段階化して考えること！
-
-- $Y_{ij}$: 各店舗($i$), 各人の売り上げ($j$), $X_i$: 店舗($i$)の売り上げ, $W_1$: 店舗全体の平均値, $W_2$: 店舗間の分散,$S$: $W_1,W_2$の事前分布を決めるパラメータと設定した場合, 
-
-**S -> W -> X -> Y**というような生成過程を仮定する.
-
-## 階層ベイズモデルとしての考え方1
-
-- 1回目と2回目の身長差を統計モデルの応答変数にすればよい?
-
-欠損値があり, 個人も特定できない場合不可能..
-
-- 各県の標準偏差, 標本サイズを利用して20個の平均値の推定値の不確かさ(標準誤差)を表現する!!
-
-測定$i$回目, 県$j$の身長の平均値$Y_{i,j}$を標準誤差$S_{i,j}^2$を用いて, 以下で表現する
-
-$$Y_{i,j} \sim N(\mu_{i,j}, S_{i,j}^2)$$
-
-標準誤差$S_{i,j}^2$には, データから得られた標準誤差を使用する.
-
-## 階層ベイズモデルとしての考え方2
-
-$$\mu_{i,j} = \beta_1 + \gamma_{1,j} + (\beta_2 + \beta_3 X_j + \gamma_{2,j}) Age_i$$
-
-一般化線形モデルとの違いは, $\gamma_{i,j}$が含まれていることであり, $i$回目の測定における県ごとの身長差を表している. パラメータの事前分布は$i$回目の標準偏差$\sigma_i$を用いて以下で設定する
-
-$$\gamma_{i,j} \sim N(0,\sigma_i^2)$$
-
-このように事前分布である$\gamma_{i,j}$に対して, さらに$\sigma_i$のように階層的にパラメータを設定したモデルを階層ベイズモデルと呼ぶ.
-
-## Rstanで階層ベイズモデル
-
-```{r eval=FALSE}
-# data
-d_list <- list(N = 2,
-               N_pref = length(unique(d$pref)), # データにおける都道府県の数
-               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
-               Sigma_Y = t(matrix(d$sd.Y/sqrt(d$N), length(unique(d$pref)), 2)), # dim() 2 10... N_r  N_pref
-               X = t(matrix(d$X, length(unique(d$pref)), 2)),
-               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
-# コンパイル
-model <- stan_model("stan/hierarchical_bayes_model.stan",auto_write = FALSE)
-# サンプリング
-fit3 <- rstan::sampling(object = model,
-                        data = d_list,
-                        verbose = TRUE, 
-                        iter = 5000, 
-                        chains = 3)
-# save file
-saveRDS(fit3,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
-```
-
-## サンプリング結果の確認
-
-```{r}
-fit3 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes.rds")
-fit3
-```
-
-## 収束性の確認
-
-```{r}
-fit3 %>% traceplot(pars = "beta")
-```
-
-## ggmcmc package: ヒストグラム, 自己相関
-
-- 扱いにくいstanの型を, data.frame型に変更する
-
-```{r}
-df_param3 <- ggs(fit3)
-```
-
-```{r}
-p1 <- ggs_histogram(df_param3, family = 'beta') # ヒストグラム
-p2 <- ggs_autocorrelation(df_param3, family = 'beta') # 自己相関
-#p3 <- ggs_density(df_param3, family = 'beta') # 密度分布
-#p4 <- ggs_running(df_param3, family = 'beta') # イテレーレションごとの平均値の推移
-gridExtra::grid.arrange(p1, p2, ncol = 2)
-```
-
-## ggmcmc package: paired plot
-
-```{r}
-ggs_pairs(df_param3, lower = list(continuous = "density"), family = 'beta')
-```
-
-## ggmcmc package: credible intervals
-
-- ベイズ信頼区間
-
-```{r}
-library(stringr)
-df_param3 %>% 
-  filter(str_detect(Parameter, pattern = "beta")) %>% 
-  ci(thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975)) %>% 
-  knitr::kable(digits = 4)
-```
-
-## 結果の解釈
-
-- $\beta_3$(測定回数:2かつ給食タイプ:1)の影響が小さく見積もられた.
-- $\beta_3$のベイズ信頼区間に0が含まれている.
-
-# 第5章 事前情報を組み込む
-
-- 階層事前分布の分散パラメータに half-t 分布を使用する
-
-```{r eval=FALSE}
-# data
-d_list <- list(N = 2,
-               N_pref = length(unique(d$pref)), # データにおける都道府県の数
-               Mean_Y = t(matrix(d$mean.Y, length(unique(d$pref)), 2)),
-               Sigma_Y = t(matrix(d$sd.Y/sqrt(d$N), length(unique(d$pref)), 2)), # dim() 2 10... N_r  N_pref
-               X = t(matrix(d$X, length(unique(d$pref)), 2)),
-               Age = t(matrix(d$Age, length(unique(d$pref)), 2)))
-# コンパイル
-model <- stan_model("stan/hierarchical_bayes_model2.stan",auto_write = FALSE)
-# サンプリング
-fit4 <- rstan::sampling(object = model,
-                        data = d_list,
-                        verbose = TRUE, 
-                        iter = 5000, 
-                        chains = 3)
-# save file
-saveRDS(fit4,"~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
-```
-
-## サンプリング結果の確認
-
-- 結果が少し変わった!!
-- 得られたサンプリング結果や事前知識を組み込むことができる!!
-
-```{r}
-fit4 <- readRDS("~/Desktop/Intro_pres/Bayes_Introduction/fit/hierarchical_bayes2.rds")
-fit4
-```
-
-## 収束性の確認
-
-```{r}
-fit4 %>% traceplot(pars = "beta")
-```
-
-# 第6章: まとめ
-
-## 階層ベイズモデルの利点
-
-- データ数(20)よりもパラメータ数(25)が多い場合, 直線当てはめなどの統計モデルでは推定できないが, 階層ベイズモデルでは可能となる.
-
-- 理由としては階層事前分布($\sigma_1,\sigma_2$)による, 制約を加えたことで$\gamma_{1,j},\gamma_{2,j}$は自由に値を選べない状況になっている.
-
-- 階層事前分布を取り除くとどうなるでしょうか？？
-
-## 参考文献
-
-1. 松浦健太郎(2016), 「StanとRでベイズ統計モデリング」共立出版株式会社.
-1. Gelman, A. (2013). *Bayesian Data Analysis, Third Edition*. Chapman and Hall/CRC. 
-1. Stan Development Team, Stan Modeling Language User’s Guide and Reference Manual, https://github.com/stan-dev/stan/releases/download/v2.17.0/stan-reference-2.17.0.pdf
