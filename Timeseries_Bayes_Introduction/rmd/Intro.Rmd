@@ -40,9 +40,11 @@ rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 ```
 
-# 第0章: 使用データについて
+# 第1章: 状態空間モデル
 
-## 杉の年輪幅の推移
+## 使用データ
+
+### 杉の年輪幅の推移
 
 - year: 1961-1930, width: 杉の年輪幅 
 
@@ -58,16 +60,13 @@ data <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/data
 dplyr::glimpse(data)
 ```
 
-## データ概要
+### データ概要
 
 ```{r}
 ggplot(data,aes(x=year, y=width)) +
   geom_line() +
   geom_point()
 ```
-
-# 第1章: 状態空間モデル
-
 ## 時系列データと状態空間モデル
 
 - 時系列データでは, ある時点の測定値とその前後の測定値との間に相関(自己相関)が生じうる. つまり, 時間的に独立ではない. このようなデータを独立のものとして扱って統計解析を行うと謝った結論を導いてしまうおそれがあります. このため, 時系列データを扱うさまざまな統計的手法が開発され, 実際に利用されている.状態空間モデルも時系列データを扱うことができる手法の一つである.
@@ -209,4 +208,209 @@ fit2 %>%
   geom_line(aes(y=median,color = "State")) +
   scale_color_manual(name = "label", 
                      values = c("Obs" = "blue", "State" = "red"))
+```
+
+## 動的線形モデル
+
+ここまで出てきたように, ノイズが正規分布し, 変数間の関係が線形の状態空間モデルは動的線形モデル(Dynamic Linear Model: DLM)と呼ばれている. 動的線形モデルは一般に以下のように表現できる.
+
+$$
+\begin{eqnarray}
+y_t &=& F_t \theta_t + v_t, v_t \sim Normal(0,V_t) \\
+\theta_t &=& W_t \theta_{t-1} + w_t, W_t \sim Normal(0,W_t) 
+\end{eqnarray}
+$$
+
+観測値$y_t$, 状態$\theta_t$, 観測ノイズ$v_t$, システムノイズ$w_t$は一般にベクトルで, $F_t,W_t$はそれぞれ適切な次元の行列, $V_t,W_t$は分散共分散行列となる.
+
+- ローカルレベルモデル
+
+$$
+\begin{eqnarray}
+\theta_t = \alpha_t, F_t = 1, G_t = 1, v_t = \epsilon_t, V_t = \sigma_\epsilon^2, w_t = \eta_t, W_t = \sigma_\epsilon^2
+\end{eqnarray}
+$$
+
+- 2次のトレンドモデル
+
+$$
+\begin{eqnarray}
+\theta_t = 
+  \left(
+    \begin{array}{c}
+      \alpha_t \\
+      \alpha_{t-1} 
+      \end{array}
+  \right), 
+F_t = 
+  \left(
+    \begin{array}{cc}
+      1 & 0
+    \end{array}
+  \right),
+G_t = 
+  \left(
+    \begin{array}{cc}
+      2 & -1\\
+      1 & 0
+      \end{array}
+  \right), 
+v_t = \epsilon_t, V_t = \sigma_\epsilon^2, 
+w_t = 
+  \left(
+    \begin{array}{c}
+      \eta_t \\
+      0 
+      \end{array}
+  \right), 
+W_t = 
+  \left(
+    \begin{array}{cc}
+      \sigma_\epsilon^2 & 0\\
+      0 & 0
+      \end{array}
+  \right)
+\end{eqnarray}
+$$
+
+## トレンドモデル
+
+- 2次のトレンドモデルの観測モデルにおいて, 正規分布から対数正規分布に変更する. (値が小さいときには変動は小さく, 値が大きい時には変動が大きくなる)
+
+1. システムモデル
+
+$$
+\begin{eqnarray}
+\alpha_t - \alpha_{t-1} &=& \alpha_{t-1} - \alpha_{t-2} + \eta_t \\
+\alpha_t &=& 2\alpha_{t-1} - \alpha_{t-2} + \eta_t, \quad \eta_t \sim Normal(0,\sigma_\eta^2)
+\end{eqnarray}
+$$
+
+2.観測モデル
+
+$$
+\begin{eqnarray}
+y_t &=& \alpha_t + \epsilon_t, \quad \epsilon_t \sim LogNormal(0,\sigma_\epsilon^2)
+\end{eqnarray}
+$$
+
+### Rstanでトレンドモデル
+
+```{r eval=FALSE}
+# data
+d_list <- list(N = NROW(data), # データ数
+               Width = data$width) # 杉の幅
+# コンパイル
+model <- stan_model(
+  "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/trend_log_normal.stan",
+  auto_write = FALSE)
+# サンプリング
+fit3 <- rstan::sampling(object = model,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 5000, 
+                        chains = 3)
+# savefile
+saveRDS(fit3,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/trend_log_normal.rds")
+```
+
+### サンプリング結果の確認
+
+- Rhatを確認する
+
+```{r}
+fit3 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/trend_log_normal.rds")
+fit3
+```
+
+### 収束性の確認
+
+```{r}
+fit3 %>% traceplot()
+```
+
+### 状態値の可視化
+
+- 状態値と95%信用区間
+- ここでは$\alpha_t$の値は, $\y_t$の対数に対応するので, $\exp(\alpha_t)$の値をプロットする.
+- 値が小さい部分では, 信用区間が小さくなっていることがわかる.
+
+```{r}
+fit3 %>% 
+  ggs(family = "alpha") %>% 
+  ci(thin_ci = c(0.025, 0.975)) %>% 
+  bind_cols(data) %>% 
+  ggplot(aes(x=year)) +
+  geom_ribbon(aes(ymin=exp(low),ymax=exp(High)),alpha=0.5) +
+  geom_line(aes(y=width,color = "Obs")) +
+  geom_line(aes(y=exp(median),color = "State")) +
+  scale_color_manual(name = "label", 
+                     values = c("Obs" = "blue", "State" = "red"))
+```
+
+# 第2章: 空間自己回帰モデル
+
+## 空間的に自己相関のあるデータ
+
+ここまで, 時間的に独立ではないデータを扱ってきたが, 同様に空間的に独立でないデータも存在する. 空間的に自己相関のあるデータでは, ある場所のデータは, その近隣のデータとは独立ではないと考える.
+
+## Intrinsic CAR モデル 
+
+Intrinsic CAR (Conditional Auto-Regressive; 条件付き自己回帰モデル)は空間の自己相関を扱うモデルの一つであり, 場所ごとのランダム効果が近隣のデータに依存して決まると考える. 場所$i=1,2,...,n$のランダム効果を$S=(S_1,S_2,...,S_n)$とする時, $S_i$は, $i$以外の$S_{-i}$に依存して決まるとして, 以下の式で与えられる.
+
+$$S_i|S_{-i} \sim Normal\left(\sum_{j \neq i} \frac{w_{ij}S_j}{w_{i+}},\frac{\sigma^2}{w_{i+}}\right)$$
+
+ここで, $w_{ij}$は場所$i$と$j$の重み付け変数であり, 隣接している場合$1$,そうでなければ$0$とする. また, $w_{i+} = \sum_j w_{ij}$であり, 重み付けの合計値である. $S_i$は平均が近隣の$S$の平均に等しく, 分散が近隣の場所数に反比例するような正規分布に従う.
+
+## 使用データ
+
+### アラカシのという種類のカシの木の株の数
+
+- year: 1961-1930, width: 杉の年輪幅 
+
+```{r}
+data1 <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/data/forest.csv") 
+dplyr::glimpse(data1)
+```
+
+### データ概要
+
+```{r}
+ggplot(data1,aes(x=X, y=Y,fill=N)) +
+  geom_tile() +
+  ylim(c(10,0)) +
+  scale_fill_gradient2(low="red", high="blue", na.value="black", name="")
+```
+
+### Rstanでトレンドモデル
+
+```{r eval=FALSE}
+# data
+d_list <- list(N = NROW(data1), # データ数
+               N_i = 20, # x
+               N_j = 10, # y
+               Index_x = data1$X,
+               Index_y = data1$Y,
+               Val = data1$N) # value
+# コンパイル
+model <- stan_model(
+  "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/Intrinsic_CAR.stan",
+  auto_write = FALSE)
+# サンプリング
+fit4 <- rstan::sampling(object = model,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 3000, 
+                        chains = 3)
+# savefile
+saveRDS(fit4,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
+```
+
+### サンプリング結果の確認
+
+- Rhatを確認する
+
+```{r}
+fit4 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
+fit4
 ```
