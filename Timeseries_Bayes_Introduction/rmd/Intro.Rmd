@@ -409,7 +409,7 @@ model <- stan_model(
 fit4 <- rstan::sampling(object = model,
                         data = d_list,
                         verbose = TRUE, 
-                        iter = 1000, 
+                        iter = 2000, 
                         chains = 3)
 # savefile
 saveRDS(fit4,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
