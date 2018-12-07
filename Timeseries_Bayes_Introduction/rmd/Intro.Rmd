@@ -33,6 +33,8 @@ library(tidyverse)
 theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
 ```
 
+# 第0章: stan 設定
+
 ```{r stan option, message=FALSE,echo=FALSE}
 library(ggmcmc)
 library(rstan)
@@ -369,6 +371,7 @@ $$S_i|S_{-i} \sim Normal\left(\sum_{j \neq i} \frac{w_{ij}S_j}{w_{i+}},\frac{\si
 - year: 1961-1930, width: 杉の年輪幅 
 
 ```{r}
+library(tidyverse)
 data1 <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/data/forest.csv") 
 dplyr::glimpse(data1)
 ```
@@ -378,20 +381,26 @@ dplyr::glimpse(data1)
 ```{r}
 ggplot(data1,aes(x=X, y=Y,fill=N)) +
   geom_tile() +
-  ylim(c(10,0)) +
   scale_fill_gradient2(low="red", high="blue", na.value="black", name="")
 ```
 
-### Rstanでトレンドモデル
+### データ変形
+
+- 行列データにする
+
+```{r}
+data2 <- data1 %>% 
+  tidyr::spread(key = Y,value=N) %>% 
+  dplyr::select(-X)
+```
+
+## Rstanでトレンドモデル
 
 ```{r eval=FALSE}
 # data
-d_list <- list(N = NROW(data1), # データ数
-               N_i = 20, # x
-               N_j = 10, # y
-               Index_x = data1$X,
-               Index_y = data1$Y,
-               Val = data1$N) # value
+d_list <- list(N_i = NROW(data2), # x len
+               N_j = NCOL(data2), # y len
+               Data = data2) # value
 # コンパイル
 model <- stan_model(
   "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/Intrinsic_CAR.stan",
@@ -400,7 +409,7 @@ model <- stan_model(
 fit4 <- rstan::sampling(object = model,
                         data = d_list,
                         verbose = TRUE, 
-                        iter = 3000, 
+                        iter = 1000, 
                         chains = 3)
 # savefile
 saveRDS(fit4,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
@@ -413,4 +422,23 @@ saveRDS(fit4,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_C
 ```{r}
 fit4 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
 fit4
+```
+
+### 収束性の確認
+
+```{r}
+fit4 %>% traceplot()
+```
+
+### 状態値の可視化
+
+```{r}
+fit4 %>% 
+  ggs(family = "eff") %>% 
+  ci() %>% 
+  mutate(X = rep(1:20,each=10),
+         Y = rep(1:10,20)) %>% 
+  ggplot(aes(x=X, y=Y,fill=median)) +
+  geom_tile() +
+  scale_fill_gradient2(low="red", high="blue", na.value="black", name="")
 ```
