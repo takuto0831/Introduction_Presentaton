@@ -28,12 +28,18 @@ opts_chunk$set(echo=TRUE,
 opts_knit$set(width=75)
 # setting directory
 setwd("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/")
-# ggplot setting
+```
+
+# 第0章: 設定
+
+## ggplot
+
+```{r}
 library(tidyverse)
 theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
 ```
 
-# 第0章: stan 設定
+## stan 
 
 ```{r stan option, message=FALSE,echo=FALSE}
 library(ggmcmc)
@@ -69,11 +75,75 @@ ggplot(data,aes(x=year, y=width)) +
   geom_line() +
   geom_point()
 ```
+
 ## 時系列データと状態空間モデル
 
 - 時系列データでは, ある時点の測定値とその前後の測定値との間に相関(自己相関)が生じうる. つまり, 時間的に独立ではない. このようなデータを独立のものとして扱って統計解析を行うと謝った結論を導いてしまうおそれがあります. このため, 時系列データを扱うさまざまな統計的手法が開発され, 実際に利用されている.状態空間モデルも時系列データを扱うことができる手法の一つである.
 
 - 状態空間モデルの特徴は観測できない状態値によって, 観測データが得られると考えることである. 状態変化を表すモデルをシステムモデル, 観測値が得られる過程を説明するモデルを観測モデルと呼ぶ.
+
+### 動的線形モデル
+
+ここまで出てきたように, ノイズが正規分布し, 変数間の関係が線形の状態空間モデルは動的線形モデル(Dynamic Linear Model: DLM)と呼ばれている. 動的線形モデルは一般に以下のように表現できる.
+
+$$
+\begin{eqnarray}
+y_t &=& F_t \theta_t + v_t, v_t \sim Normal(0,V_t) \\
+\theta_t &=& W_t \theta_{t-1} + w_t, W_t \sim Normal(0,W_t) 
+\end{eqnarray}
+$$
+
+観測値$y_t$, 状態$\theta_t$, 観測ノイズ$v_t$, システムノイズ$w_t$は一般にベクトルで, $F_t,W_t$はそれぞれ適切な次元の行列, $V_t,W_t$は分散共分散行列となる.
+
+### ローカルレベルモデル
+
+$$
+\begin{eqnarray}
+\theta_t = \alpha_t, F_t = 1, G_t = 1, v_t = \epsilon_t, V_t = \sigma_\epsilon^2, w_t = \eta_t, W_t = \sigma_\epsilon^2
+\end{eqnarray}
+$$
+
+### 2次のトレンドモデル
+
+$$
+\begin{eqnarray}
+\theta_t = 
+  \left(
+    \begin{array}{c}
+      \alpha_t \\
+      \alpha_{t-1} 
+      \end{array}
+  \right), 
+F_t = 
+  \left(
+    \begin{array}{cc}
+      1 & 0
+    \end{array}
+  \right),
+G_t = 
+  \left(
+    \begin{array}{cc}
+      2 & -1\\
+      1 & 0
+      \end{array}
+  \right), 
+v_t = \epsilon_t, V_t = \sigma_\epsilon^2, 
+w_t = 
+  \left(
+    \begin{array}{c}
+      \eta_t \\
+      0 
+      \end{array}
+  \right), 
+W_t = 
+  \left(
+    \begin{array}{cc}
+      \sigma_\epsilon^2 & 0\\
+      0 & 0
+      \end{array}
+  \right)
+\end{eqnarray}
+$$
 
 ## ローカルレベルモデル
 
@@ -212,68 +282,7 @@ fit2 %>%
                      values = c("Obs" = "blue", "State" = "red"))
 ```
 
-## 動的線形モデル
 
-ここまで出てきたように, ノイズが正規分布し, 変数間の関係が線形の状態空間モデルは動的線形モデル(Dynamic Linear Model: DLM)と呼ばれている. 動的線形モデルは一般に以下のように表現できる.
-
-$$
-\begin{eqnarray}
-y_t &=& F_t \theta_t + v_t, v_t \sim Normal(0,V_t) \\
-\theta_t &=& W_t \theta_{t-1} + w_t, W_t \sim Normal(0,W_t) 
-\end{eqnarray}
-$$
-
-観測値$y_t$, 状態$\theta_t$, 観測ノイズ$v_t$, システムノイズ$w_t$は一般にベクトルで, $F_t,W_t$はそれぞれ適切な次元の行列, $V_t,W_t$は分散共分散行列となる.
-
-- ローカルレベルモデル
-
-$$
-\begin{eqnarray}
-\theta_t = \alpha_t, F_t = 1, G_t = 1, v_t = \epsilon_t, V_t = \sigma_\epsilon^2, w_t = \eta_t, W_t = \sigma_\epsilon^2
-\end{eqnarray}
-$$
-
-- 2次のトレンドモデル
-
-$$
-\begin{eqnarray}
-\theta_t = 
-  \left(
-    \begin{array}{c}
-      \alpha_t \\
-      \alpha_{t-1} 
-      \end{array}
-  \right), 
-F_t = 
-  \left(
-    \begin{array}{cc}
-      1 & 0
-    \end{array}
-  \right),
-G_t = 
-  \left(
-    \begin{array}{cc}
-      2 & -1\\
-      1 & 0
-      \end{array}
-  \right), 
-v_t = \epsilon_t, V_t = \sigma_\epsilon^2, 
-w_t = 
-  \left(
-    \begin{array}{c}
-      \eta_t \\
-      0 
-      \end{array}
-  \right), 
-W_t = 
-  \left(
-    \begin{array}{cc}
-      \sigma_\epsilon^2 & 0\\
-      0 & 0
-      \end{array}
-  \right)
-\end{eqnarray}
-$$
 
 ## トレンドモデル
 
@@ -350,7 +359,43 @@ fit3 %>%
                      values = c("Obs" = "blue", "State" = "red"))
 ```
 
-# 第2章: 空間自己回帰モデル
+# 第2章: 状態空間モデルの応用例
+
+## 季節調整項を含むモデル
+
+トレンド項$\alpha_t$と季節調整項$season_t$, 観測ノイズ$\epsilon_t$を含むモデルを考える. 季節調整項は周期$L$の周期性を持ち, 任意の連続した$L$個の$\sum_{l=0}^{L-1} season_{t-l}$の和は常に小さい値$\epsilon_{season,t}$になると仮定する.
+
+$$
+\begin{eqnarray}
+y_t &=& \alpha_t + season_t + \epsilon_t, \quad \epsilon_t \sim Normal(0,\sigma_\epsilon^2) \\
+\alpha_t &=& \alpha_{t-1} + \eta_t, \quad \eta_t \sim Normal(0,\sigma_\eta^2)
+\end{eqnarray}
+$$
+
+### 使用データ
+
+- 季節性のあるデータ
+
+```{r}
+library(tidyverse)
+library(lubridate)
+data1 <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/data/season.txt",
+                  col_names = TRUE) %>% 
+  mutate(id = row_number()) %>% 
+  select(id,Y)
+
+dplyr::glimpse(data)
+```
+
+- データ概要
+
+```{r}
+ggplot(data1,aes(x=id, y=Y)) +
+  geom_line() +
+  geom_point()
+```
+
+# 第3章: 空間自己回帰モデル
 
 ## 空間的に自己相関のあるデータ
 
