@@ -363,11 +363,12 @@ fit3 %>%
 
 ## 季節調整項を含むモデル
 
-トレンド項$\alpha_t$と季節調整項$season_t$, 観測ノイズ$\epsilon_t$を含むモデルを考える. 季節調整項は周期$L$の周期性を持ち, 任意の連続した$L$個の$\sum_{l=0}^{L-1} season_{t-l}$の和は常に小さい値$\epsilon_{season,t}$になると仮定する.
+トレンド項$\alpha_t$と季節調整項$season_t$, 観測ノイズ$\epsilon_t$を含むモデルを考える. 季節調整項は周期$L$の周期性を持ち, 任意の連続した$L$個の$\sum_{l=0}^{L-1} season_{t-l}$の和は常に小さい値$\delta_{t}$になると仮定する.
 
 $$
 \begin{eqnarray}
 y_t &=& \alpha_t + season_t + \epsilon_t, \quad \epsilon_t \sim Normal(0,\sigma_\epsilon^2) \\
+season_t &=& - \sum_{l=1}^{L-1} season_{t-l} + \delta_{t}, \quad \delta_{t} \sim Normal(0,\sigma_{\delta}^2) \\
 \alpha_t &=& \alpha_{t-1} + \eta_t, \quad \eta_t \sim Normal(0,\sigma_\eta^2)
 \end{eqnarray}
 $$
@@ -384,7 +385,7 @@ data1 <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/dat
   mutate(id = row_number()) %>% 
   select(id,Y)
 
-dplyr::glimpse(data)
+dplyr::glimpse(data1)
 ```
 
 - データ概要
@@ -394,6 +395,69 @@ ggplot(data1,aes(x=id, y=Y)) +
   geom_line() +
   geom_point()
 ```
+
+### Rstanで季節調整項を含むトレンドモデル
+
+```{r eval=FALSE}
+# data
+d_list <- list(N = NROW(data1), # データ数
+               Data = data1$Y)
+# コンパイル
+model <- stan_model(
+  "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/trend_season.stan",
+  auto_write = FALSE)
+# サンプリング
+fit4 <- rstan::sampling(object = model,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 5000, 
+                        chains = 3)
+# savefile
+saveRDS(fit4,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/trend_season.rds")
+```
+
+### サンプリング結果の確認
+
+- Rhatを確認する
+
+```{r}
+fit4 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/trend_season.rds")
+fit4
+```
+
+### 収束性の確認
+
+```{r}
+fit4 %>% traceplot()
+```
+
+### 状態値の可視化
+
+```{r}
+# トレンド項
+fit4 %>% 
+  ggs(family = "alpha") %>% 
+  ci(thin_ci = c(0.025, 0.975)) %>% 
+  bind_cols(data1) %>% 
+  ggplot(aes(x=id)) +
+  geom_ribbon(aes(ymin=low,ymax=High),alpha=0.5) +
+  geom_line(aes(y=Y,color = "Real")) +
+  geom_line(aes(y=median,color = "Trend")) +
+  scale_color_manual(name = "label", 
+                     values = c("Real" = "blue", "Trend" = "red"))
+# 季節調整項
+fit4 %>% 
+  ggs(family = "season") %>% 
+  ci(thin_ci = c(0.025, 0.975)) %>% 
+  bind_cols(data1) %>% 
+  ggplot(aes(x=id)) +
+  geom_ribbon(aes(ymin=low,ymax=High),alpha=0.5) +
+  geom_line(aes(y=median,color = "Trend"))
+```
+
+## 変化点検出
+
+## その他のモデル
 
 # 第3章: 空間自己回帰モデル
 
@@ -411,7 +475,7 @@ $$S_i|S_{-i} \sim Normal\left(\sum_{j \neq i} \frac{w_{ij}S_j}{w_{i+}},\frac{\si
 
 ## 使用データ
 
-### アラカシのという種類のカシの木の株の数
+### アラカシという種類のカシの木の株の数
 
 - year: 1961-1930, width: 杉の年輪幅 
 
@@ -451,13 +515,13 @@ model <- stan_model(
   "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/Intrinsic_CAR.stan",
   auto_write = FALSE)
 # サンプリング
-fit4 <- rstan::sampling(object = model,
+fit6 <- rstan::sampling(object = model,
                         data = d_list,
                         verbose = TRUE, 
                         iter = 2000, 
                         chains = 3)
 # savefile
-saveRDS(fit4,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
+saveRDS(fit6,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
 ```
 
 ### サンプリング結果の確認
@@ -465,20 +529,20 @@ saveRDS(fit4,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_C
 - Rhatを確認する
 
 ```{r}
-fit4 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
-fit4
+fit6 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
+fit6
 ```
 
 ### 収束性の確認
 
 ```{r}
-fit4 %>% traceplot()
+fit6 %>% traceplot()
 ```
 
 ### 状態値の可視化
 
 ```{r}
-fit4 %>% 
+fit6 %>% 
   ggs(family = "eff") %>% 
   ci() %>% 
   mutate(X = rep(1:20,each=10),
