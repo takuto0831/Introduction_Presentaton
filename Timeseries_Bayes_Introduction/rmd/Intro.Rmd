@@ -50,6 +50,8 @@ options(mc.cores = parallel::detectCores())
 
 # 第1章: 状態空間モデル
 
+状態空間モデルでは,システムモデルにおける事後確率最大化と観測モデルにおける事後確率最大化により, 二つの相反する条件をバランスよく推定する.
+
 ## 使用データ
 
 ### 杉の年輪幅の推移
@@ -209,7 +211,7 @@ fit1 %>%
                      values = c("Obs" = "blue", "State" = "red"))
 ```
 
-## トレンドモデル
+## トレンドモデル1
 
 - 状態の変化量(傾き)が少しずつ変化する
 
@@ -284,7 +286,7 @@ fit2 %>%
 
 
 
-## トレンドモデル
+## トレンドモデル2
 
 - 2次のトレンドモデルの観測モデルにおいて, 正規分布から対数正規分布に変更する. (値が小さいときには変動は小さく, 値が大きい時には変動が大きくなる)
 
@@ -455,17 +457,114 @@ fit4 %>%
   geom_line(aes(y=median,color = "Trend"))
 ```
 
-## 変化点検出
-
 ## その他のモデル
+
+### 変化点検出
+
+観測モデルの誤差項にコーシー分布を使うと, 外れ値の影響を軽減できる. (コーシー分布やt分布: まれに生じる外れ値を含めて解析を進められる)
+
+$$
+\begin{eqnarray}
+y_t &=& \alpha_t + \epsilon_t, \quad \epsilon_t \sim Normal(0,\sigma_\epsilon^2) \\
+\alpha_t &=& \alpha_{t-1} + \eta_t, \quad \eta_t \sim Cauchy(0,\sigma_\eta^2)
+\end{eqnarray}
+$$
+
+モデル式において, 正規分布をコーシー分布に変えてもうまくサンプリングすることはできないため, 再パラメータ化が必要. (再パラメータ化: 変数変換により効率的にサンプリングする手法)
+
+コーシー分布の場合は, 累積分布関数の逆関数が容易に求まるので, 逆関数法を用いたサンプリング手法を使うことができる.
+
+$$
+\begin{eqnarray}
+F(y) &=& \frac{1}{\pi} \arctan(\frac{y-\mu}{\sigma}) + 0.5 \\
+F^{-1}(x) &=& \mu + \sigma \tan(\pi(x-0.5))
+\end{eqnarray}
+$$
+
+$x \sim Uniform(0,1)$とすれば, $F^{-1}(x)$は$Cauchy(\mu,\sigma)$に従う.
+
+### 独自のトレンド項
+
+背景知識から独自のトレンド項を適用しても良い. (3次とか対数とか)
+
+### 複数の要因
+
+トレンド項や季節調整項以外にも, 天気や休日効果などその他の背景知識を組み込むことができる.
 
 # 第3章: 空間自己回帰モデル
 
-## 空間的に自己相関のあるデータ
+- 状態空間モデルはノードに注目する見方であり, t-1からtへの向きがある. 空間的解釈においてはエッジに注目する見方であり, 向きがない. このような近傍とのつながりから対数事後確率が定まるモデルをマルコフ場モデル(Markov field model)やマルコフ確率場(Markov random field, MRF)と呼ぶ. 
 
-ここまで, 時間的に独立ではないデータを扱ってきたが, 同様に空間的に独立でないデータも存在する. 空間的に自己相関のあるデータでは, ある場所のデータは, その近隣のデータとは独立ではないと考える.
+- ここまで, 時間的に独立ではないデータを扱ってきたが, 同様に空間的に独立でないデータも存在する. 空間的に自己相関のあるデータでは, ある場所のデータは, その近隣のデータとは独立ではないと考える.
 
-## Intrinsic CAR モデル 
+## 1次元の空間構造
+
+### 使用データ
+
+```{r}
+library(tidyverse)
+library(lubridate)
+data1 <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/data/space_dim1.txt",
+                  col_names = TRUE) 
+dplyr::glimpse(data1)
+```
+
+### モデル式
+
+$$
+\begin{eqnarray}
+&p(r[1],r[2],...r[I]) \propto \frac{1}{\sigma^A_r} \exp\left[-\frac{1}{2\sigma^2} \sum^{I}_{i=2} (r[i] - r[i-1])^2\right] \\
+&Y[i] \sim Poisson(\exp(r[i])) \quad i = 1,...I
+\end{eqnarray}
+$$
+
+### Rstan 実行例と可視化
+
+- 実行例
+
+```{r eval=FALSE}
+# data
+d_list <- list(I = NROW(data1), # データ数
+               Y = data1$Y)
+# コンパイル
+model <- stan_model(
+  "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/stan/space_dim1.stan",
+  auto_write = FALSE)
+# サンプリング
+fit5 <- rstan::sampling(object = model,
+                        data = d_list,
+                        verbose = TRUE, 
+                        iter = 3000, 
+                        chains = 3)
+# savefile
+saveRDS(fit5,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/space_dim1.rds")
+```
+
+- 収束性の確認
+
+```{r}
+fit5 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/space_dim1.rds")
+fit5
+fit5 %>% traceplot()
+```
+
+- 結果の解釈
+
+```{r}
+fit5 %>% 
+  ggs(family = "Y_mean") %>% 
+  ci() %>% 
+  bind_cols(data1) %>% 
+  mutate(i = row_number()) %>% 
+  ggplot(aes(x=i)) +
+  geom_point(aes(y=Y)) +
+  geom_ribbon(aes(ymin=low,ymax=high), alpha = 0.5) +
+  geom_line(aes(y=median))
+```
+
+## 2次元の空間構造
+
+- Intrinsic CAR モデル 
 
 Intrinsic CAR (Conditional Auto-Regressive; 条件付き自己回帰モデル)は空間の自己相関を扱うモデルの一つであり, 場所ごとのランダム効果が近隣のデータに依存して決まると考える. 場所$i=1,2,...,n$のランダム効果を$S=(S_1,S_2,...,S_n)$とする時, $S_i$は, $i$以外の$S_{-i}$に依存して決まるとして, 以下の式で与えられる.
 
@@ -473,19 +572,19 @@ $$S_i|S_{-i} \sim Normal\left(\sum_{j \neq i} \frac{w_{ij}S_j}{w_{i+}},\frac{\si
 
 ここで, $w_{ij}$は場所$i$と$j$の重み付け変数であり, 隣接している場合$1$,そうでなければ$0$とする. また, $w_{i+} = \sum_j w_{ij}$であり, 重み付けの合計値である. $S_i$は平均が近隣の$S$の平均に等しく, 分散が近隣の場所数に反比例するような正規分布に従う.
 
-## 使用データ
+### 使用データ
 
-### アラカシという種類のカシの木の株の数
+#### アラカシという種類のカシの木の株の数
 
 - year: 1961-1930, width: 杉の年輪幅 
 
 ```{r}
 library(tidyverse)
-data1 <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/data/forest.csv") 
+data1 <- read_csv(file = "~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/data/space_dim2.csv") 
 dplyr::glimpse(data1)
 ```
 
-### データ概要
+#### データ概要
 
 ```{r}
 ggplot(data1,aes(x=X, y=Y,fill=N)) +
@@ -505,7 +604,12 @@ data2 <- data1 %>%
 
 ## Rstanでトレンドモデル
 
+- 2次元の空間構造は局所最適解が多く, xにあたりをつけて, 注意深い初期値の設定をする必要がある.
+
 ```{r eval=FALSE}
+# 前処理
+loess_res <- loess(N ~ X + Y, data = data1,span = 0.1)
+smoothed <- matrix(loess_res$fitted,nrow=NROW(data2),ncol = NCOL(data2))
 # data
 d_list <- list(N_i = NROW(data2), # x len
                N_j = NCOL(data2), # y len
@@ -518,8 +622,11 @@ model <- stan_model(
 fit6 <- rstan::sampling(object = model,
                         data = d_list,
                         verbose = TRUE, 
-                        iter = 2000, 
-                        chains = 3)
+                        iter = 5000, 
+                        chains = 3,
+                        init = function(){
+                          list(eff=smoothed, beta=rnorm(1,0,0.1),sigma=1)
+                        })
 # savefile
 saveRDS(fit6,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
 ```

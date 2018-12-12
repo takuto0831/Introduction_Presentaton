@@ -4,7 +4,7 @@ data{
   int Data[N_i,N_j]; // value
 }
 parameters{
-  matrix<lower=0>[N_i,N_j] eff; // random effect
+  matrix[N_i,N_j] eff; // random effect
   real beta; // coef parameter
   real<lower=0> sigma; // covarianve parameter
 }
