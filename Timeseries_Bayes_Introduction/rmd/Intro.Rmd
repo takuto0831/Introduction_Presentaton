@@ -544,8 +544,9 @@ saveRDS(fit5,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/space_dim1.
 
 ```{r}
 fit5 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/space_dim1.rds")
-fit5
-fit5 %>% traceplot()
+fit5 # サンプリング結果
+fit5 %>% traceplot() # トレースプロット
+fit5 %>% get_posterior_mean() # 各パラメータの事後平均値
 ```
 
 - 結果の解釈
