@@ -15,6 +15,12 @@
 - stanに関するまとめ, mcmcの説明, 実行例と解釈方法, 応用例について
 - 自己回帰モデル, 単回帰モデル, 重回帰モデルの分析,可視化
 
+# Timeseries_Bayes_Introduction
+
+- 状態空間モデル
+- トレンドモデルの応用
+- 空間自己相関を持つモデル
+
 ## Directory
 
 ```
@@ -41,33 +47,55 @@
 │       ├── Intro.Rmd
 │       └── Intro.html
 ├── README.md
-└── Rstan_Introduction
-    ├── Rstan_Introduction.Rproj
-    ├── csv
-    │   ├── Tokyo_2017_rain.csv
-    │   ├── Tokyo_2017_sun.csv
-    │   ├── Tokyo_2017_temp.csv
-    │   ├── Tokyo_2017_weather.csv
-    │   └── Tokyo_2017_wind.csv
+├── Rstan_Introduction
+│   ├── Rstan_Introduction.Rproj
+│   ├── csv
+│   │   ├── Tokyo_2017_rain.csv
+│   │   ├── Tokyo_2017_sun.csv
+│   │   ├── Tokyo_2017_temp.csv
+│   │   ├── Tokyo_2017_weather.csv
+│   │   └── Tokyo_2017_wind.csv
+│   ├── fit
+│   │   ├── fit_ar.rds
+│   │   ├── fit_mul.rds
+│   │   └── fit_sim.rds
+│   ├── model
+│   │   └── simple_model.rds
+│   ├── output
+│   │   └── image
+│   │       ├── temperature_time_series.png
+│   │       └── weather_corr_map.png
+│   ├── rmd
+│   │   ├── Intro.Rmd
+│   │   └── Intro.html
+│   ├── script
+│   │   └── function.R
+│   └── stan
+│       ├── ar_model.stan
+│       ├── multi_linear_reg.stan
+│       ├── simple_linear_reg.stan
+│       └── simple_model.stan
+└── Timeseries_Bayes_Introduction
+    ├── Timeseries_Bayes_Introduction.Rproj
+    ├── data
+    │   ├── nenrin.txt
+    │   ├── season.txt
+    │   ├── space_dim1.txt
+    │   └── space_dim2.csv
     ├── fit
-    │   ├── fit_ar.rds
-    │   ├── fit_mul.rds
-    │   └── fit_sim.rds
-    ├── model
-    │   └── simple_model.rds
-    ├── output
-    │   └── image
-    │       ├── temperature_time_series.png
-    │       └── weather_corr_map.png
+    │   ├── local_level.rds
+    │   ├── space_dim1.rds
+    │   ├── trend.rds
+    │   ├── trend_log_normal.rds
+    │   └── trend_season.rds
     ├── rmd
     │   ├── Intro.Rmd
     │   └── Intro.html
-    ├── script
-    │   └── function.R
     └── stan
-        ├── ar_model.stan
-        ├── multi_linear_reg.stan
-        ├── simple_linear_reg.stan
-        └── simple_model.stan
-
+        ├── Intrinsic_CAR.stan
+        ├── local_level.stan
+        ├── space_dim1.stan
+        ├── trend.stan
+        ├── trend_log_normal.stan
+        └── trend_season.stan
 ```
