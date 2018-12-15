@@ -636,20 +636,20 @@ saveRDS(fit6,"~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_C
 
 - Rhatを確認する
 
-```{r}
+```{r eval=FALSE}
 fit6 <- readRDS("~/Desktop/Intro_pres/Timeseries_Bayes_Introduction/fit/Intrinsic_CAR.rds")
 fit6
 ```
 
 ### 収束性の確認
 
-```{r}
+```{r eval=FALSE}
 fit6 %>% traceplot()
 ```
 
 ### 状態値の可視化
 
-```{r}
+```{r eval=FALSE}
 fit6 %>% 
   ggs(family = "eff") %>% 
   ci() %>% 
