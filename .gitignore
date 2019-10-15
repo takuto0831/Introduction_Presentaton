@@ -2,3 +2,4 @@
 *.html
 .Rproj.user
 *.rds
+.DS_Store
