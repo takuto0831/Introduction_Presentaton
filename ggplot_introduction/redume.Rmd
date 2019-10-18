@@ -1,0 +1,98 @@
+---
+title: "ggplot introduction"
+date: "`r Sys.Date()`"
+author: "Takuto Kotsubo"
+output:
+  rmdformats::readthedown:
+    code_folding: hide
+    self_contained: true
+    thumbnails: false
+    lightbox: false
+    md_extensions: -ascii_identifiers
+editor_options:
+  chunk_output_type: console
+---
+
+```{r set up, message=FALSE,echo=FALSE, warning=FALSE}
+# reset env
+rm(list = ls())
+# global options
+library(knitr)
+opts_chunk$set(echo=TRUE,
+               cache = FALSE,
+	             prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               fig.width = 15,
+               fig.height = 15)
+opts_knit$set(width=75)
+
+# setting directory (各自のディレクトリ設定に合わせる)
+setwd("~/Desktop/Intro_pres/ggplot_introduction/")
+```
+
+## パッケージ読み込み
+
+- `ggplot2`も同時に読み込まれている!
+
+```{r}
+library(tidyverse)
+theme_set(theme_minimal()) # 基本設定
+# theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
+```
+
+## 使用データ一覧
+
+- `AirPassengers2`: 時系列データ (データ加工済)
+- `mpg`: テーブルデータ
+
+```{r}
+# data.frame型に変更
+AirPassengers2 <- 
+  data.frame(AirPassengers = AirPassengers %>% as.integer(), 
+             year = round(time(AirPassengers)) %>% as.integer(),
+             month = month.abb[cycle(AirPassengers)])
+# データ確認
+str(AirPassengers2)
+str(mpg)
+```
+
+# プロット種類
+
+## 折れ線グラフ (line chart)
+
+```{r}
+AirPassengers2 %>% 
+  filter(month == 'Jan') %>% 
+  ggplot(aes(x=year, y = AirPassengers)) +
+  geom_line()
+```
+
+## 棒グラフ
+
+```{r}
+mpg %>% 
+  ggplot(aes(x=manufacturer)) +
+  geom_bar()
+```
+
+## カラムチャート
+
+```{r}
+
+```
+
+
+# 第2章: 導入
+
+- `ggplot2`に付属する `mpg`データを使用する.
+
+```{r}
+str(mpg)
+```
+
+# 参考資料
+
+- [14 Useful Ways to Visualize Your Data (With Examples)](https://www.sisense.com/blog/10-useful-ways-visualize-data-examples/)

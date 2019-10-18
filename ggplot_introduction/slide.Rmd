@@ -1,0 +1,49 @@
+---
+title: "ggplot introduction"
+date: "`r Sys.Date()`"
+author: "Takuto Kotsubo"
+output: powerpoint_presentation
+---
+
+## セットアップ
+
+```{r set up, message=FALSE,echo=FALSE}
+rm(list = ls())
+# global options
+library(knitr)
+opts_chunk$set(echo=TRUE,
+               cache = FALSE,
+	             prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               fig.width = 15,
+               fig.height = 15)
+opts_knit$set(width=75)
+
+# setting directory (各自のディレクトリ設定に合わせる)
+setwd("~/Desktop/Intro_pres/ggplot_introduction/")
+```
+
+## 設定
+
+- `ggplot2`も同時に読み込まれている.
+- theme_set()でベースを設定する. 
+
+```{r}
+library(tidyverse)
+theme_set(theme_minimal()) # 基本設定
+# theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
+```
+
+## 導入
+
+- `ggplot2`に付属する `mpg`データを使用する.
+
+```{r}
+str(mpg)
+```
+
+## 図例
+
