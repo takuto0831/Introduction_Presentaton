@@ -3,3 +3,5 @@
 .Rproj.user
 *.rds
 .DS_Store
+ggplot_introduction/redume_cache
+ggplot_introduction/redume_files

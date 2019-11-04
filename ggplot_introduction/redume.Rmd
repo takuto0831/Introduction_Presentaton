@@ -4,6 +4,7 @@ date: "`r Sys.Date()`"
 author: "Takuto Kotsubo"
 output:
   rmdformats::readthedown:
+    css: style.css
     code_folding: hide
     self_contained: true
     thumbnails: false
@@ -13,33 +14,123 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r set up, message=FALSE,echo=FALSE, warning=FALSE}
+```{r set up, message=FALSE, echo=FALSE, warning=FALSE}
 # reset env
 rm(list = ls())
 # global options
 library(knitr)
 opts_chunk$set(echo=TRUE,
-               cache = FALSE,
+               cache = TRUE,
 	             prompt=FALSE,
                tidy=TRUE,
                comment=NA,
                message=FALSE,
                warning=FALSE,
-               fig.width = 15,
-               fig.height = 15)
-opts_knit$set(width=75)
+               fig.width = 7,
+               fig.height = 4)
+opts_knit$set(width=50)
 
 # setting directory (各自のディレクトリ設定に合わせる)
 setwd("~/Desktop/Intro_pres/ggplot_introduction/")
 ```
 
+# ggplot パッケージ
+
+Rのグラフィックスパッケージである`ggplot`のインストール, 使い方について説明する.
+
+## ggplotのインストール
+
+- tidyverse パッケージを読み込むと, ggplotも読み込まれています!
+
+```{r}
+# install.packages("ggplot2", dependencies=TRUE)
+library(ggplot2)
+library(tidyverse)
+```
+
+![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/library(tidyverse).png)
+
+## ggplotの使い方
+
+1. aesthetic: グラフにしたい**対象列**を設定する
+
+2. geom_????: どのようなグラフを作成するか決める
+
+3. options: title, color, themesなどを決める.
+
+## plotとは何が違うのか?
+
+- irisデータの `Sepal.Length`と `Sepal.Width`について散布図を作成したい場合 plot関数は楽そうに見えるが...
+
+```{r}
+# plot関数を用いた散布図
+plot(iris$Sepal.Length, iris$Sepal.Width)
+```
+
+```{r}
+# ggplot関数を用いた散布図
+ggplot(data = iris, aes(x=Sepal.Length, Sepal.Width)) +
+  geom_point()
+```
+
+- irisデータの `Species` = setosaにおける, `Sepal.Length`と `Sepal.Width`の散布図を作成したい場合...
+
+```{r}
+# plot関数を用いた散布図
+iris2 <- iris %>% 
+  filter(Species == 'setosa')
+plot(iris2$Sepal.Length, iris2$Sepal.Width)
+```
+
+```{r}
+# ggplot関数を用いた散布図
+iris %>% 
+  filter(Species == 'setosa') %>% 
+  ggplot(aes(x=Sepal.Length, Sepal.Width)) +
+  geom_point()
+```
+
+- irisデータの`Sepal.Length`と `Sepal.Width`について散布図を作成し, 凡例, 図タイトルを入れる. 
+
+```{r}
+# plot関数を用いた散布図
+
+# rainbow関数用 
+iris2 <- iris %>% 
+  mutate(Species_flg = as.factor(Species) %>% as.integer())
+# 散布図を表示
+plot(iris2$Sepal.Length, iris2$Sepal.Width,
+     col = rainbow(3)[iris2$Species_flg],
+     main = "Scatter plot by Speicies")
+# 凡例を表示
+labels <- c("setosa", "versicolor", "virginica")
+legend("topleft", legend = labels, col = rainbow(3), pch = 1)
+```
+
+```{r}
+# ggplot関数を用いた散布図
+iris %>% 
+  ggplot(aes(x=Sepal.Length, Sepal.Width)) +
+  geom_point(aes(color=Species)) + # 種類ごとに色分け
+  labs(title = "Scatter plot by Speicies") + # タイトル
+  theme_minimal() # 背景色
+```
+
+## ggplot関数のメリット
+
+- dplryパッケージのパイプ演算子(%>%)との相性が良い!
+- plot関数は必要な項目を一気にまとめて出力するのに対して, ggplot関数は層を重ねて表現できる 
+- 例えばタイトルを表記しない場合は, labs(~~)の行をコメントアウトすれば良い
+
+![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/plot_image.png)
+
 ## パッケージ読み込み
 
-- `ggplot2`も同時に読み込まれている!
+- `tidyverse`パッケージには`ggplot2`も含まれています!
 
 ```{r}
 library(tidyverse)
-theme_set(theme_minimal()) # 基本設定
+# theme_set(theme_minimal()) # 基本設定
 # theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
 ```
 
@@ -59,9 +150,11 @@ str(AirPassengers2)
 str(mpg)
 ```
 
-# プロット種類
+# 各プロット
 
 ## 折れ線グラフ (line chart)
+
+- `geom_line()`
 
 ```{r}
 AirPassengers2 %>% 
@@ -71,6 +164,8 @@ AirPassengers2 %>%
 ```
 
 ## 棒グラフ
+
+- `geom_bar()`
 
 ```{r}
 mpg %>% 
