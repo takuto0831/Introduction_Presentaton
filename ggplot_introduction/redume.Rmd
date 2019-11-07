@@ -5,7 +5,7 @@ author: "Takuto Kotsubo"
 output:
   rmdformats::readthedown:
     css: style.css
-    code_folding: hide
+    code_folding: show
     self_contained: true
     thumbnails: false
     lightbox: false
@@ -34,6 +34,63 @@ opts_knit$set(width=50)
 setwd("~/Desktop/Intro_pres/ggplot_introduction/")
 ```
 
+# イントロダクション
+
+ggplot2パッケージを紹介する前に, どのようなプロットがあるのか目的別に紹介する.
+
+## 出席&課題について
+
+以下のgoogle formに学籍番号を記入の上, 課題に回答する.
+
+- [第9回 (11/8)](https://forms.gle/UoytLFTd5yoosC4s5)
+- [第10回 (11/15)](https://forms.gle/qdet5ZdsfjVZuh7DA)
+
+## プロットの種類について
+
+- Correlation plot 
+
+散布図など
+
+- Deviation plot
+
+棒グラフなど
+
+- Distribution plot 
+
+ヒストグラムなど
+
+- Composition plot
+
+円グラフなど
+
+- Change plot
+
+時系列プロットなど
+
+- Groups plot
+
+デンドログラム, クラスタープロット
+
+- Map plot
+
+等高線図など
+
+## パッケージ読み込み
+
+- `tidyverse`パッケージには`ggplot2`も含まれている
+
+```{r}
+library(tidyverse)
+```
+
+## 使用データについて
+
+```{r}
+glimpse(mpg)
+glimpse(midwest)
+glimpse(mtcars)
+```
+
 # ggplot パッケージ
 
 Rのグラフィックスパッケージである`ggplot`のインストール, 使い方について説明する.
@@ -43,8 +100,6 @@ Rのグラフィックスパッケージである`ggplot`のインストール, 
 - tidyverse パッケージを読み込むと, ggplotも読み込まれています!
 
 ```{r}
-# install.packages("ggplot2", dependencies=TRUE)
-library(ggplot2)
 library(tidyverse)
 ```
 
@@ -52,13 +107,49 @@ library(tidyverse)
 
 ## ggplotの使い方
 
+
 1. aesthetic: グラフにしたい**対象列**を設定する
+ 
+  irisデータに対して, x軸に`Petal.Length`, y軸に`Petal.Width`を指定する
 
 2. geom_????: どのようなグラフを作成するか決める
 
-3. options: title, color, themesなどを決める.
+geom_point (散布図) を作成する
 
-## plotとは何が違うのか?
+3. options: title, color, themesなどを決める
+
+labs(title="sample_plot")で図のタイトルを設定する
+
+4. それぞれの関数を + 記号でつなげる
+
+```{r}
+ggplot(data = iris, aes(x=Petal.Length, y=Petal.Width)) +
+  geom_point() + 
+  labs(title = "sample plot")
+```
+
+- パイプ演算子を用いて書くと...
+
+```{r eval=FALSE}
+iris %>% 
+  ggplot(aes(x=Petal.Length, y=Petal.Width)) +
+  geom_point() + 
+  labs(title = "sample plot")
+```
+
+- 途中経過を代入することもできる! 
+
+**(対象列までは同じだけど, 散布図も折れ線グラフも描きたいときなど便利!!)**
+
+```{r eval=FALSE}
+p1 <- iris %>% 
+  ggplot(aes(x=Petal.Length, y=Petal.Width))
+  
+p1 + geom_point() + labs(title = "sample plot")
+```
+
+
+## plot関数とは何が違うのか?
 
 - irisデータの `Sepal.Length`と `Sepal.Width`について散布図を作成したい場合 plot関数は楽そうに見えるが...
 
@@ -119,75 +210,672 @@ iris %>%
 ## ggplot関数のメリット
 
 - dplryパッケージのパイプ演算子(%>%)との相性が良い!
-- plot関数は必要な項目を一気にまとめて出力するのに対して, ggplot関数は層を重ねて表現できる 
+- plot関数は必要な項目を一気にまとめて出力するのに対して, ggplot関数は出力したいものを重ねて表現できる 
 - 例えばタイトルを表記しない場合は, labs(~~)の行をコメントアウトすれば良い
 
 ![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/plot_image.png)
 
-## パッケージ読み込み
+## ggplotの基本option
 
-- `tidyverse`パッケージには`ggplot2`も含まれています!
+- xlim: x軸の範囲
+- ylim: y軸の範囲
+- labs: 図タイトルや軸ラベル 
+- theme_??: 背景
 
-```{r}
-library(tidyverse)
-# theme_set(theme_minimal()) # 基本設定
-# theme_set(theme_classic(base_size = 18,base_family = "Helvetica"))
+```{r eval=FALSE}
+data %>% 
+  ggplot(aes(x=~~, y=~~ )) +
+  xlim(c(0.500)) + # x軸の範囲
+  ylim(c(0,100)) + # y軸の範囲
+  labs(title="Scatterplot", # タイトル
+       subtitle="Area Vs Population", # サブタイトル
+       x="Area", # x軸のラベル
+       y="Population") + # y軸のラベル
+  theme_bw() # 背景
 ```
 
-## 使用データ一覧
+- 以下のような背景がある!!
 
-- `AirPassengers2`: 時系列データ (データ加工済)
-- `mpg`: テーブルデータ
+**ggthemes パッケージをインストールするとさらに自由なグラフ表現ができる!!**
 
-```{r}
-# data.frame型に変更
-AirPassengers2 <- 
-  data.frame(AirPassengers = AirPassengers %>% as.integer(), 
-             year = round(time(AirPassengers)) %>% as.integer(),
-             month = month.abb[cycle(AirPassengers)])
-# データ確認
-str(AirPassengers2)
-str(mpg)
+```{r echo=FALSE, fig.width = 15, fig.height = 10}
+library(gridExtra)
+# base
+p <- iris %>% 
+  ggplot(aes(x=Sepal.Length, Sepal.Width)) +
+  geom_point(aes(color=Species))
+# いろんな背景
+p1 <- p + labs(title = "theme_gray (Default)") +
+  theme_gray() 
+p2 <- p + labs(title = "theme_bw") +
+  theme_bw() 
+p3 <- p + labs(title = "theme_dark") +
+  theme_dark() 
+p4 <- p + labs(title = "theme_light") +
+  theme_light() 
+p5 <- p + labs(title = "theme_linedraw") +
+  theme_linedraw() 
+p6 <- p + labs(title = "theme_minimal") +
+  theme_minimal() 
+p7 <- p + labs(title = "theme_void") +
+  theme_void() 
+p8 <- p + labs(title = "theme_classic") +
+  theme_classic() 
+
+# 出力
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, nrow=3)
 ```
 
-# 各プロット
+## ggplotのよく使うoptions
 
-## 折れ線グラフ (line chart)
-
-- `geom_line()`
+- facet_wrap: 指定した列でグラフを分割する. 
 
 ```{r}
-AirPassengers2 %>% 
-  filter(month == 'Jan') %>% 
-  ggplot(aes(x=year, y = AirPassengers)) +
-  geom_line()
+# スケールを揃える
+iris %>% 
+  ggplot(aes(x=Sepal.Width, y=Sepal.Length)) +
+  geom_point() +
+  facet_wrap(~Species)
+# スケールを各データで変える
+iris %>% 
+  ggplot(aes(x=Sepal.Width, y=Sepal.Length)) +
+  geom_point() +
+  facet_wrap(~Species, scales = "free")
 ```
 
-## 棒グラフ
+- base_family: デフォルトの設定では文字化けするので, 日本語を使用する場合には, 変更する必要がある！ (毎回設定するのは面倒なので, 必要がなければ英語で表記する方が良い)
 
-- `geom_bar()`
+```{r}
+g <- iris %>% 
+  ggplot(aes(x=Sepal.Width, y=Sepal.Length)) +
+  geom_point()
+# 文字化けする例
+g + labs(x="幅", y="長さ")
+# 日本語入力対応例
+g + labs(x="幅", y="長さ") +
+  theme_gray (base_family = "HiraKakuPro-W3")
+```
+
+- theme_set: 以後全てのggplotに対して, theme_minimal()を使用することを宣言する.
+(他にも, 文字サイズ等をあらかじめ決定できる)
+
+```{r}
+theme_set(theme_minimal()) 
+
+# 日本語を入力する場合の設定
+# theme_set(theme_gray (base_family = "HiraKakuPro-W3"))
+```
+
+- 様々なthemeを使用したいとき, まとめて設定しておくと便利.
+
+```{r eval=FALSE}
+# main theme 1
+My_Theme_1 <- 
+  theme_gray (base_family = "HiraKakuPro-W3")) + 
+  theme(axis.title.x = element_text(size = 30),
+        axis.title.y = element_text(size = 30),
+        axis.text.x = element_text(size = 24),
+        axis.text.y = element_text(size = 24))
+# my theme 2
+My_Theme_2 <-
+  theme_classic() +
+  theme(axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16))
+```
+
+# Correlation plot
+
+- 2つの変数の関係性を表す
+
+## Scatter plot (練習課題1)
+
+- geom_point関数は散布図を生成, geom_smooth関数は回帰線を生成する.
+- *optionについて 変数を使用する場合は, aes()内で使用する.*
+
+**geom_point()の引数**
+
+- col: 点の色を変える (colourでも良い)
+- shape: 点の形を変える 
+- size: 点のサイズを変える 
+
+**geom_smooth()の引数**
+
+- method: 回帰のアルゴリズムを指定する (lm, glm, loess等)
+- se: 信頼区間を表示させるか (T or F)
+
+```{r}
+g <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + 
+  xlim(c(0, 0.1)) + 
+  ylim(c(0, 500000)) + 
+  labs(subtitle="Area Vs Population", 
+       y="Population", 
+       x="Area", 
+       title="Scatterplot", 
+       caption = "Source: midwest")
+g
+```
+
+```{r eval=FALSE, echo=FALSE}
+# col: numeric変数を使う場合
+ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=popdensity, size=popdensity))
+
+# size: factor変数を使う場合
+ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(size=popdensity))
+
+# sizeをnumeric, shapeをfactor変数で指定する場合
+ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(size=5,shape=state))
+
+# colour, size, shape 等を数字で指定する場合
+ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(col=30, size=5, shape=2)
+```
+
+## Jitter plot
+
+- 複数の点が重なっている場合, そのまま散布図を作成すると実際のデータを正確に表すことができない.
+
+```{r}
+g <- ggplot(mpg, aes(cty, hwy))
+
+# Scatterplot
+g + geom_point() + 
+  geom_smooth(method="lm", se=F) +
+  labs(subtitle="mpg: city vs highway mileage", 
+       y="hwy", 
+       x="cty", 
+       title="Scatterplot with overlapping points", 
+       caption="Source: mpg")
+```
+
+**geom_jitter()の引数**
+
+- size: 点のサイズ
+- width: 水平方向の散らばり
+- height: 垂直方向の散らばり
+
+```{r}
+g <- ggplot(mpg, aes(cty, hwy))
+
+g + 
+  geom_smooth(method="lm", se=F) +
+  geom_jitter(height = 0, width = .5, size=1) +
+  labs(subtitle="mpg: city vs highway mileage", 
+       y="hwy", 
+       x="cty", 
+       title="Jittered Points",
+       caption="Source: mpg")
+```
+
+## Bubble plot
+
+- カテゴリカル変数で色を, 連続変数でsizeを変化させる.
+
+```{r}
+g <- mpg %>% 
+  filter(manufacturer %in% 
+           c("audi", "ford", "honda", "hyundai")) %>% 
+  ggplot(aes(x=displ, y=cty)) + 
+  labs(subtitle="mpg: Displacement vs City Mileage",
+       title="Bubble chart")
+
+g + geom_jitter(aes(col=manufacturer, size=hwy)) + 
+  geom_smooth(aes(col=manufacturer), method="lm", se=F)
+```
+
+## Animated Bubble chart
+
+gganimate()関数は動的な作図を生成する. 
+
+- transition_time(): 時間推移の対象となる列を指定する. (この場合は year)
+
+- ease_aes(): 変化の度合い
+
+```{r animate bubble chart, eval=FALSE}
+# library(devtools)
+# devtools::install_github('thomasp85/gganimate')
+library(gganimate)
+library(gapminder)
+
+g <- ggplot(gapminder, 
+       aes(gdpPercap, lifeExp, 
+           size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent) +
+  labs(title = 'Year: {frame_time}',
+       x = 'GDP per capita', 
+       y = 'life expectancy') +
+  transition_time(year)
+  ease_aes('linear')
+```
+
+# Deviation plot 
+
+## Bar plot (練習問題2)
+
+**geom_bar()の引数**
+
+- stat: y軸も指定する場合に必要！
+- width: 棒グラフの横幅
 
 ```{r}
 mpg %>% 
   ggplot(aes(x=manufacturer)) +
-  geom_bar()
+  geom_bar(width = .5) +
+  theme_gray() +
+  labs(title="Bar Chart", 
+       subtitle="Manufacturer", 
+       caption="source: mpg")
 ```
 
-## カラムチャート
+```{r eval=FALSE, echo=FALSE}
+# プラン1
+mpg %>% 
+  ggplot(aes(x=manufacturer, fill=class)) +
+  geom_bar() +
+  theme(
+    axis.text.x = element_text(angle=45,vjust=.5))
+
+# プラン2
+mpg %>% 
+  ggplot(aes(x=manufacturer, fill=class)) +
+  geom_bar() +
+  coord_flip() 
+```
+
+## Lollipop chart
+
+- geom_point()とgeom_segment()を組み合わせる.
 
 ```{r}
-
+mpg_cty <- mpg %>% 
+  group_by(manufacturer) %>% 
+  summarise(mileage = mean(cty)) %>% 
+  ungroup()
 ```
 
+**geom_segment()の引数**
 
-# 第2章: 導入
-
-- `ggplot2`に付属する `mpg`データを使用する.
+- x: x軸の始点
+- xend: x軸の終点
+- y: y軸の始点
+- yend: y軸の終点
 
 ```{r}
-str(mpg)
+ggplot(mpg_cty, aes(x=manufacturer, y=mileage)) + 
+  geom_point(size=3) + 
+  geom_segment(aes(x=manufacturer, 
+                   xend=manufacturer, 
+                   y=0, 
+                   yend=mileage)) +
+  labs(title="Lollipop Chart", 
+       subtitle="Manufacturer Vs Avg. Mileage", 
+       caption="source: mpg") + 
+  theme(
+    axis.text.x = element_text(angle=65, vjust=.5))
 ```
 
-# 参考資料
+## Dot plot
 
-- [14 Useful Ways to Visualize Your Data (With Examples)](https://www.sisense.com/blog/10-useful-ways-visualize-data-examples/)
+**geom_segment()の引数**
+
+- linetype: 線の種類を指定
+- size: 線の太さ
+
+```{r}
+ggplot(mpg_cty, aes(x=manufacturer, y=mileage)) + 
+  geom_point(col="tomato2", size=3) + 
+  geom_segment(aes(x=manufacturer, 
+                   xend=manufacturer, 
+                   y=min(mileage), 
+                   yend=max(mileage)), 
+               linetype="dashed", 
+               size=.1) +   # Draw dashed lines
+  labs(title="Dot Plot", 
+       subtitle="Manufacturer Vs Avg. Mileage", 
+       caption="source: mpg") +  
+  coord_flip()
+```
+
+## Slope chart 
+
+- 2時点間の比較に用いる.geom_vline(), geom_hline()は直線を生成する.
+
+**geom_text()の引数**
+
+- x: x座標の位置
+- y: y座標の位置
+- label: 表示する文字
+- hjust, vjust: 場所の微調整
+
+```{r}
+# データの確認
+df <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/gdppercap.csv")
+colnames(df) <- c("continent", "1952", "1957")
+head(df)
+
+# グラフ用 (実数の最大値)
+max_y <-  
+  summarise_if(df, is.numeric, 
+               funs(max(., na.rm=TRUE))) %>% max()
+```
+
+```{r}
+p <- ggplot(df) + 
+  geom_segment(
+    aes(x=1,xend=2, y=`1952`,yend=`1957`,
+        col=continent),size=.75) +
+  geom_vline(
+    xintercept=1, linetype="dashed",size=.1) + 
+  geom_vline(
+    xintercept=2, linetype="dashed", size=.1) +
+  labs(x="", y="Mean GdpPerCap") +
+  xlim(0.5,2.5) +
+  ylim(0,1.1*max_y) + 
+  theme_classic()
+
+# 時点を追加する
+p <- p + 
+  geom_text(label="Time 1", x=1, y=1.1*max_y, 
+            hjust=1.2, size=5)  # title
+p <- p +
+  geom_text(label="Time 2", x=2, y=1.1*max_y,
+            hjust=-0.1, size=5)  # title
+p
+```
+
+# Distribution plot 
+
+## Histogram
+
+- x軸にカテゴリカル変数を扱う場合は geom_bar(), 連続変数を使う場合はgeom_histogram().
+- scale_fill_brewer: 使用する色をまとめて指定する
+
+**geom_histogram()の引数**
+
+- fill: 色を変える(内部)
+- binwidth: 棒のサイズ
+- bins: 棒の数
+
+
+```{r}
+g <- ggplot(mpg, aes(displ)) +
+  scale_fill_brewer(palette = "Spectral")
+
+g + 
+  geom_histogram(aes(fill=class), 
+                 binwidth = .1, 
+                 col="black", 
+                 size=.1) +  # change binwidth
+  labs(title="Histogram with Auto Binning", 
+       subtitle="Engine Displacement across Vehicle Classes") 
+```
+
+## Density plot
+
+**geom_density()の引数**
+- fill: 色を変える(内部)
+- alpha: 透明度
+
+```{r}
+ggplot(mpg, aes(cty)) +
+  geom_density(aes(fill=factor(cyl)), alpha=0.8) + 
+    labs(title="Density plot", 
+         caption="Source: mpg",
+         x="City Mileage",
+         fill="# Cylinders")
+```
+
+- fillやcolorに対して, 連続変数を与えるとグラデーションを与えられるの, 数値の場合でも種類が少ない場合などは列指定でfactor型に変更することで, 明示的に色を区別できる.
+
+## Box plot (練習問題3)
+
+**geom_density()の引数**
+- fill: 色を変える(内部)
+- varwidth: グループの割合で横幅を変える
+
+```{r}
+ggplot(mpg, aes(class, cty)) +
+  geom_boxplot(varwidth=T, fill="plum") + 
+  labs(title="Box plot", 
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+```
+
+```{r eval=FALSE, echo=FALSE}
+# プラン1
+ggplot(mpg, aes(class, cty)) +
+  geom_boxplot(varwidth=T, fill="plum") + 
+  labs(title="Box plot", 
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage") + 
+  geom_jitter(width = 0.1, height = 0)
+
+# プラン2
+ggplot(mpg, aes(class, cty)) +
+  geom_boxplot(varwidth=T, fill="plum",
+               outlier.alpha = 0.5) + 
+  labs(title="Box plot", 
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+```
+
+## Violin plot
+
+- violin plotはカーネル密度推定を左右対称に描いた図
+
+**geom_violin()の引数**
+
+- trim: 端点を平らにカットするか
+- scale="count": 囲まれた面積が各グループの観測値の数に比例するように設定する.
+- draw_quantiles: 四分位点を表す.
+
+```{r}
+p <- ggplot(mtcars, aes(factor(cyl), mpg))
+
+# default
+p + geom_violin() 
+
+# edit
+p + 
+  geom_violin(aes(fill = cyl),
+              trim = FALSE,
+              scale = "count",
+              draw_quantiles = c(0.25, 0.5, 0.75))
+```
+
+# Composition plot
+
+## Pie chart
+
+- x軸を指定せずに, classによって色を変えた積み上げ棒グラフを作成する.
+- coord_polar()関数により, 元のグラフを円グラフで表現する.
+
+```{r}
+pie <- ggplot(mpg, 
+              aes(x = "", fill = factor(class))) + 
+  geom_bar(width = 1) +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(hjust=0.5)) + 
+  labs(fill="class", 
+       x=NULL, 
+       y=NULL, 
+       title="Pie Chart of class", 
+       caption="Source: mpg")
+
+# 元のplot
+pie
+# 円グラフ
+pie + coord_polar(theta = "y", start=0)
+```
+
+- 3d 円グラフ (使わない方がよいです) 
+
+```{r}
+# devtools::install_github("coolbutuseless/threed")
+# devtools::install_github("coolbutuseless/ggthreed")
+library(threed)
+library(ggthreed)
+
+ggplot(mtcars) + 
+  geom_threedpie(aes(x = as.factor(cyl))) + 
+  theme_void() + 
+  theme(legend.position = 'bottom')
+```
+
+## Tree map
+
+- ツリーマップは階層的な構造を表現する. 二次元平面状の領域に入れ子状に分割することによって, 木構造のデータを可視化する手法.
+- parent > id = value という構造のデータを用意する.
+
+```{r}
+# install.packages("treemapify")
+library(treemapify)
+
+proglangs <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/proglanguages.csv")
+glimpse(proglangs)
+```
+
+**geom_treemap()の引数**
+
+- area: 領域サイズ (numeric)
+- fill: 内部の色 (factor)
+- label: areaの名称
+- subgroup: 大分類の名称
+
+```{r}
+# normal plot
+proglangs %>% 
+  ggplot(aes(area = value, fill = parent)) +
+  geom_treemap() 
+
+# add label and subgroup
+proglangs %>% 
+  ggplot(aes(area = value, fill = parent,
+             label = id, subgroup = parent)) +
+  geom_treemap()
+
+# add text
+proglangs %>% 
+  ggplot(aes(area = value, fill = parent,
+             label = id, subgroup = parent)) +
+  geom_treemap() +
+  geom_treemap_subgroup_border(colour = "red") +
+  geom_treemap_subgroup_text(
+    place = "centre", grow = TRUE, alpha = 0.8,
+    colour = "red", fontface = "italic", min.size = 0) +
+  geom_treemap_text(
+    fontface = "bold", colour = "yellow",
+    place = "centre", grow = TRUE)
+```
+
+# Change plot
+
+## Time seiries plot (for ts object)
+
+## Time seiries plot (for data frame)
+
+## Multiple Time seiries plot 
+
+## Stacked Area Chart
+
+## Seasonal Plot
+
+## Calender Heatmap
+
+# Groups plot
+
+## Hierarchical Dendrogram
+
+## Clusters
+
+# Map plot
+
+## Spatial (ggmap)
+
+## Contour plot
+
+# 課題
+
+## 課題1
+
+- `mpg`データのmanufacturerについて, 頻度ではなく割合で表記するには?
+
+```{r echo=FALSE}
+# プラン3
+mpg %>% 
+  group_by(manufacturer) %>% 
+  summarise(perc = n()/NROW(mpg)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=manufacturer, y=perc)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(y = "percentage")
+```
+
+## 課題2
+
+- こんな図を作るには?? (課題2)
+
+ヒント1: データ整形でgdpが上がった(up) or 下がった(down)を表す列(class)を作成する.
+
+ヒント2: 国名を追加してみよう!!
+
+```{r echo=FALSE}
+# データの確認
+df <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/gdppercap.csv")
+colnames(df) <- c("continent", "1952", "1957")
+
+# データの整形
+df <- df %>% 
+  mutate(
+    class = if_else(`1952`<`1957`, "up", "down"))
+
+# グラフ用 (実数の最大値)
+max_y <-  
+  summarise_if(df, is.numeric, 
+               funs(max(., na.rm=TRUE))) %>% max()
+
+# main
+p <- ggplot(df) + 
+  geom_segment(
+    aes(x=1,xend=2, y=`1952`,yend=`1957`,
+    col=class),size=.75) +
+  geom_vline(
+    xintercept=1, linetype="dashed",size=.1) + 
+  geom_vline(
+    xintercept=2, linetype="dashed", size=.1) +
+  labs(x="", y="Mean GdpPerCap") +
+  xlim(0.5,2.5) +
+  ylim(0,1.1*max_y) + 
+  theme_classic()
+
+# 時点, 国名を追加する
+p <- p +
+  geom_text(label=df$continent, x=1, y=df$`1952`, 
+            hjust=1.2, size=3) 
+p <- p + 
+  geom_text(label="Time 1", x=1, y=1.1*max_y, 
+            hjust=1.2, size=5)  # title
+p <- p +
+  geom_text(label="Time 2", x=2, y=1.1*max_y,
+            hjust=-0.1, size=5)  # title
+p
+```
+
+## 課題3
+
+- 時系列plotを月ごとに集計して表してみよう!
+
