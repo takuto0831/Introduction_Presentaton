@@ -5,7 +5,7 @@ author: "Takuto Kotsubo"
 output:
   rmdformats::readthedown:
     css: style.css
-    code_folding: show
+    code_folding: hide # 配布用
     self_contained: true
     thumbnails: false
     lightbox: false
@@ -36,7 +36,16 @@ setwd("~/Desktop/Intro_pres/ggplot_introduction/")
 
 # イントロダクション
 
-ggplot2パッケージを紹介する前に, どのようなプロットがあるのか目的別に紹介する.
+- 第1回の授業で, データ集計・前処理をスムーズに行う, tidyverse, dplyrについて紹介した. 
+
+![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/概要図.png)
+
+- 第9回, 第10回では, Visualizeにおいて有用なパッケージである, ggplot2について紹介する. 同時に, よくつまづくポイントについても適宜組み込んであるので, 「こういうこともできるんだ~」ぐらいに覚えておいて欲しいです.
+
+- ggplotの書き方に慣れるために, 簡単なコードは手書きで写して欲しいので, htmlファイルのみ配布します. (状況に応じて, rmdファイルも配布します)
+
+- パッケージが使えない等の疑問点は適宜知らせてください！！
+
 
 ## 出席&課題について
 
@@ -89,6 +98,7 @@ library(tidyverse)
 glimpse(mpg)
 glimpse(midwest)
 glimpse(mtcars)
+glimpse(economics)
 ```
 
 # ggplot パッケージ
@@ -458,6 +468,55 @@ g <- ggplot(gapminder,
   ease_aes('linear')
 ```
 
+## Marginal Histogram
+
+- geom_count関数は, 重なる点のサイズを大きくすることで区別化する. ggMarginal関数はx軸, y軸に対して周辺ヒストグラムを作成する.
+
+```{r}
+# install.packages("ggExtra")
+library(ggExtra)
+
+# Scatterplot
+g <- ggplot(mpg, aes(cty, hwy)) + 
+  geom_count() + 
+  geom_smooth(method="lm", se=F)
+
+ggMarginal(g, type = "histogram", fill="transparent")
+```
+
+## Correlogram
+
+- 相関係数を可視化する.
+
+```{r}
+# install.packages("ggcorrplot")
+library(ggcorrplot)
+# 各変数の相関係数を求める
+corr <- round(cor(mtcars), 1)
+head(corr)
+```
+
+
+**ggcorrplot()の引数**
+
+- hc.order: 順番変わる
+- type: "lower"で下三角, "full"で全体
+- lab: 相関係数を表示するか
+- method: "circle", "square"
+
+```{r}
+ggcorrplot(corr, 
+           hc.order = TRUE, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 3, 
+           method="circle", 
+           colors = c("tomato2", "white", "springgreen3"), 
+           title="Correlogram of mtcars", 
+           ggtheme=theme_bw)
+```
+
+
 # Deviation plot 
 
 ## Bar plot (練習問題2)
@@ -593,6 +652,93 @@ p <- p +
 p
 ```
 
+## Area chart
+
+- 時点ごとの変化量などを可視化する
+
+```{r}
+economics %>% 
+  mutate(
+    returns = (psavert-lag(psavert))/lag(psavert)) %>% 
+  ggplot(aes(x=date, y=returns)) + 
+  geom_area() + 
+  labs(title="Area Chart", 
+       subtitle = "Perc Returns for Personal Savings", 
+       y="% Returns for Personal savings", 
+       caption="Source: economics")
+```
+
+- 月次収支にするには?
+
+## Dumbell plot (練習問題3)
+
+```{r}
+# install.packages("ggalt")
+library(ggalt)
+health <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/health.csv")
+glimpse(health)
+```
+
+**geom_dumbbell()の引数**
+
+- color: 線の色
+- x: 始点
+- xend: 終点
+
+```{r}
+health %>% 
+  ggplot(aes(x=pct_2013, xend=pct_2014, 
+             y=fct_reorder(Area,pct_2014))) + 
+  geom_dumbbell(color="steelblue", 
+                size=0.75) +
+  labs(x=NULL, 
+       y=NULL, 
+       title="Dumbbell Chart", 
+       subtitle="Pct Change: 2013 vs 2014", 
+       caption=
+         "Source:https://github.com/hrbrmstr/ggalt")
+```
+
+- fct_reorder: ggplotでは, dplyr::arrange等で順番を任意の形に変形しても, factor列などが元に戻ってしまう場合がある.
+
+```{r}
+# 見にくい例
+ggplot(health, aes(x=Area, y=pct_2013)) +
+  geom_point() +
+  coord_flip() 
+
+# 変更が効いていない例
+health %>% 
+  arrange(pct_2013) %>% 
+  ggplot(aes(x=Area, y=pct_2013)) +
+  geom_point() +
+  coord_flip() 
+```
+
+- 解決策は2つある！
+
+```{r}
+# fct_reorder 関数を使う例
+health %>% 
+  ggplot(aes(x=fct_reorder(Area, pct_2013),
+             y=pct_2013)) +
+  geom_point() +
+  coord_flip() 
+
+# 順番を変更後, 列を再定義する.
+health2 <- health %>% 
+  arrange(pct_2013) %>% 
+  mutate(Area = factor(Area, levels = Area)) 
+health2 %>% 
+  ggplot(aes(x=Area, y=pct_2013)) +
+  geom_point() +
+  coord_flip() 
+
+# おまけ (更新されている)
+levels(health$Area) %>% head
+levels(health2$Area) %>% head
+```
+
 # Distribution plot 
 
 ## Histogram
@@ -605,7 +751,6 @@ p
 - fill: 色を変える(内部)
 - binwidth: 棒のサイズ
 - bins: 棒の数
-
 
 ```{r}
 g <- ggplot(mpg, aes(displ)) +
@@ -637,7 +782,7 @@ ggplot(mpg, aes(cty)) +
 
 - fillやcolorに対して, 連続変数を与えるとグラデーションを与えられるの, 数値の場合でも種類が少ない場合などは列指定でfactor型に変更することで, 明示的に色を区別できる.
 
-## Box plot (練習問題3)
+## Box plot (練習問題4)
 
 **geom_density()の引数**
 - fill: 色を変える(内部)
@@ -670,6 +815,26 @@ ggplot(mpg, aes(class, cty)) +
        caption="Source: mpg",
        x="Class of Vehicle",
        y="City Mileage")
+```
+
+## Tuffe Boxplot
+
+- 最低限必要な要素のみを持つ箱ひげ図
+- ggthemes パッケージは, 最初に紹介した以外のtheme_???をさらに使える
+
+
+```{r}
+# install.packages("ggthemes")
+library(ggthemes)
+ggplot(mpg, aes(manufacturer, cty)) +
+  geom_tufteboxplot() + 
+  theme(axis.text.x = 
+          element_text(angle=65, vjust=0.6)) + 
+  labs(title="Tufte Styled Boxplot", 
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage") +
+  theme_tufte()
 ```
 
 ## Violin plot
@@ -787,6 +952,11 @@ proglangs %>%
 
 ## Time seiries plot (for data frame)
 
+
+```{r echo=FALSE}
+# geom_ribbon
+```
+
 ## Multiple Time seiries plot 
 
 ## Stacked Area Chart
@@ -812,6 +982,8 @@ proglangs %>%
 ## 課題1
 
 - `mpg`データのmanufacturerについて, 頻度ではなく割合で表記するには?
+
+ヒント1: 割合を先に計算してみよう! (dplyrの復習)
 
 ```{r echo=FALSE}
 # プラン3
@@ -879,3 +1051,6 @@ p
 
 - 時系列plotを月ごとに集計して表してみよう!
 
+## 課題4
+
+- 複数の図を並べてみる (gridExtra)
