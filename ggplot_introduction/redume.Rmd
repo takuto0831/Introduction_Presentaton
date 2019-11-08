@@ -36,11 +36,13 @@ setwd("~/Desktop/Intro_pres/ggplot_introduction/")
 
 # イントロダクション
 
-- 第1回の授業で, データ集計・前処理をスムーズに行う, tidyverse, dplyrについて紹介した. 
+- 第1回の授業で, データ集計・前処理をスムーズに行う, tidyr, dplyrについて紹介した. 
 
 ![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/概要図.png)
 
 - 第9回, 第10回では, Visualizeにおいて有用なパッケージである, ggplot2について紹介する. 同時に, よくつまづくポイントについても適宜組み込んであるので, 「こういうこともできるんだ~」ぐらいに覚えておいて欲しいです.
+
+![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/tidyverse.png)
 
 - ggplotの書き方に慣れるために, 簡単なコードは手書きで写して欲しいので, htmlファイルのみ配布します. (状況に応じて, rmdファイルも配布します)
 
@@ -56,33 +58,34 @@ setwd("~/Desktop/Intro_pres/ggplot_introduction/")
 
 ## プロットの種類について
 
-- Correlation plot 
+```{r echo=FALSE, fig.width = 15, fig.height = 10}
+library(tidyverse)
+library(gridExtra)
+theme_set(theme_classic())
 
-散布図など
+p1 <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point() + 
+  labs(title="Correlation plot")
+p2 <- mpg %>% 
+  ggplot(aes(x=manufacturer)) +
+  geom_bar(width = .5) +
+  labs(title="Deviation plot")
+p3 <- ggplot(mpg, aes(cty)) +
+  geom_density(alpha=0.8) + 
+  labs(title="Distribution plot")
 
-- Deviation plot
+# p4 <- +
+#   labs(title="Composition plot")
+# p5 <- +
+#   labs(title="Change plot")
+# p6 <- +
+#   labs(title="Groups plot")
+# p7 <- +
+#   labs(title="Map plot")
 
-棒グラフなど
-
-- Distribution plot 
-
-ヒストグラムなど
-
-- Composition plot
-
-円グラフなど
-
-- Change plot
-
-時系列プロットなど
-
-- Groups plot
-
-デンドログラム, クラスタープロット
-
-- Map plot
-
-等高線図など
+grid.arrange(p1, p2, p3, nrow=3)
+# grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, nrow=3)
+```
 
 ## パッケージ読み込み
 
@@ -99,6 +102,46 @@ glimpse(mpg)
 glimpse(midwest)
 glimpse(mtcars)
 glimpse(economics)
+```
+
+# tidyr, dplyr の復習
+
+## 基本動作
+
+- どういう操作か覚えていますか?
+
+(select , filter , mutate, arrange, summarize, group_by...)
+
+- 忘れた人は, 下記のコードを実行してそれぞれの操作を確認しよう！
+
+```{r eval=FALSE}
+select(starwars, name, gender, species) filter(starwars, species == "Human", height <= 170) mutate(starwars, BMI = mass / (height/100)^2) arrange(starwars, gender, height)
+summarise(starwars,
+          mean_mass = mean(mass, na.rm = TRUE),
+          mean_height = mean(height, na.rm = TRUE))
+grouped <- 
+  group_by(starwars, species) 
+summarise(grouped,
+          mean_mass = mean(mass, na.rm = TRUE),
+          mean_height = mean(height, na.rm = TRUE),
+          count = n())
+```
+
+## 復習問題
+
+- データ: starwars
+- 対象: species = "Human"
+- 調査内容: 性別ごとの平均BMI, 最大BMI, 最小BMI
+(BMI: 体重 / 身長^2)
+
+```{r eval=FALSE, echo=FALSE}
+starwars %>%
+  filter(species == "Human") %>%
+  mutate(BMI = mass / (height/100)^2) %>%
+  group_by(gender) %>%
+  summarise(mean_BMI = mean(BMI, na.rm=TRUE),
+            min_BMI = min(BMI, na.rm=TRUE), 
+            max_BMI = max(BMI, na.rm=TRUE))
 ```
 
 # ggplot パッケージ
@@ -334,6 +377,10 @@ My_Theme_2 <-
         axis.text.x = element_text(size = 16),
         axis.text.y = element_text(size = 16))
 ```
+
+- 余談
+
+[各plotとパラメータの組み合わせ](https://www.yihanwu.ca/post/geoms-and-aesthetic-parameters/)
 
 # Correlation plot
 
@@ -952,7 +999,6 @@ proglangs %>%
 
 ## Time seiries plot (for data frame)
 
-
 ```{r echo=FALSE}
 # geom_ribbon
 ```
@@ -976,6 +1022,8 @@ proglangs %>%
 ## Spatial (ggmap)
 
 ## Contour plot
+
+## geom_sf?
 
 # 課題
 
