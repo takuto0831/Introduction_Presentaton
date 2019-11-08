@@ -38,11 +38,11 @@ setwd("~/Desktop/Intro_pres/ggplot_introduction/")
 
 - 第1回の授業で, データ集計・前処理をスムーズに行う, tidyr, dplyrについて紹介した. 
 
-![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/概要図.png)
+![test](./image/概要図.png)
 
 - 第9回, 第10回では, Visualizeにおいて有用なパッケージである, ggplot2について紹介する. 同時に, よくつまづくポイントについても適宜組み込んであるので, 「こういうこともできるんだ~」ぐらいに覚えておいて欲しいです.
 
-![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/tidyverse.png)
+![test](./image/tidyverse.png)
 
 - ggplotの書き方に慣れるために, 簡単なコードは手書きで写して欲しいので, htmlファイルのみ配布します. (状況に応じて, rmdファイルも配布します)
 
@@ -61,6 +61,9 @@ setwd("~/Desktop/Intro_pres/ggplot_introduction/")
 ```{r echo=FALSE, fig.width = 15, fig.height = 10}
 library(tidyverse)
 library(gridExtra)
+library(ggdendro)
+library(ggfortify)
+
 theme_set(theme_classic())
 
 p1 <- ggplot(midwest, aes(x=area, y=poptotal)) + 
@@ -74,17 +77,30 @@ p3 <- ggplot(mpg, aes(cty)) +
   geom_density(alpha=0.8) + 
   labs(title="Distribution plot")
 
-# p4 <- +
-#   labs(title="Composition plot")
-# p5 <- +
-#   labs(title="Change plot")
-# p6 <- +
-#   labs(title="Groups plot")
-# p7 <- +
-#   labs(title="Map plot")
+p4 <- ggplot(mpg,aes(x = "", fill = factor(class))) + 
+  geom_bar(width = 1) +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(hjust=0.5)) + 
+  labs(fill="class", 
+       x=NULL, 
+       y=NULL, 
+       title="Composition plot") + 
+  coord_polar(theta = "y", start=0) 
 
-grid.arrange(p1, p2, p3, nrow=3)
-# grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, nrow=3)
+p5 <- autoplot(AirPassengers) + 
+  labs(title="AirPassengers") + 
+  theme(plot.title = element_text(hjust=0.5)) +
+  labs(title="Change plot")
+
+p6 <- hclust(dist(USArrests), "ave") %>% 
+  ggdendrogram(rotate = TRUE, size = 2) +
+  labs(title="Groups plot")
+
+p7 <- ggplot(faithfuld, aes(waiting, eruptions, z = density)) + 
+  geom_contour() +
+  labs(title="Map plot")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, nrow=3)
 ```
 
 ## パッケージ読み込み
@@ -102,6 +118,7 @@ glimpse(mpg)
 glimpse(midwest)
 glimpse(mtcars)
 glimpse(economics)
+glimpse(AirPassengers)
 ```
 
 # tidyr, dplyr の復習
@@ -156,7 +173,8 @@ Rのグラフィックスパッケージである`ggplot`のインストール, 
 library(tidyverse)
 ```
 
-![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/library(tidyverse).png)
+![test](./image/library(tidyverse).png)
+
 
 ## ggplotの使い方
 
@@ -266,7 +284,7 @@ iris %>%
 - plot関数は必要な項目を一気にまとめて出力するのに対して, ggplot関数は出力したいものを重ねて表現できる 
 - 例えばタイトルを表記しない場合は, labs(~~)の行をコメントアウトすれば良い
 
-![test](/Users/takuto/Desktop/Intro_pres/ggplot_introduction/image/plot_image.png)
+![test](./image/plot_image.png)
 
 ## ggplotの基本option
 
@@ -910,6 +928,39 @@ p +
 
 # Composition plot
 
+## Waffle chart
+
+- カテゴリカル変数の比率をわかりやすく可視化する.
+
+```{r}
+# the categorical data 
+var <- mpg$class  
+
+# Prep data
+nrows <- 10
+df <- expand.grid(y = 1:10, x = 1:10)
+categ_table <- round(table(var) * ((nrows*nrows)/(length(var))))
+categ_table
+
+df$category <- factor(rep(names(categ_table), categ_table))  
+head(df)
+```
+
+```{r}
+ggplot(df, aes(x = x, y = y, fill = category)) + 
+  geom_tile(color = "black", size = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0), trans = 'reverse') +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title="Waffle Chart", subtitle="'Class' of vehicles",
+       caption="Source: mpg") + 
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "right")
+```
+
 ## Pie chart
 
 - x軸を指定せずに, classによって色を変えた積み上げ棒グラフを作成する.
@@ -997,6 +1048,21 @@ proglangs %>%
 
 ## Time seiries plot (for ts object)
 
+- autoplot関数は ts オブジェクトに対して, 時系列分布を生成する.
+
+```{r eval=FALSE, echo=FALSE}
+# install.packages("ggfortify")
+library(ggfortify)
+
+# check data
+AirPassengers %>% str()
+
+# Plot 
+autoplot(AirPassengers) + 
+  labs(title="AirPassengers") + 
+  theme(plot.title = element_text(hjust=0.5))
+```
+
 ## Time seiries plot (for data frame)
 
 ```{r echo=FALSE}
@@ -1015,6 +1081,23 @@ proglangs %>%
 
 ## Hierarchical Dendrogram
 
+- 樹形図により階層的な構造を表す. 
+
+**ggdendrogram()の引数**
+
+
+```{r eval=FALSE, echo=FALSE}
+# install.packages("ggdendro")
+library(ggdendro)
+
+ # hierarchical clustering
+hc <- hclust(dist(USArrests), "ave") 
+str(hc)
+
+# plot
+ggdendrogram(hc, rotate = TRUE, size = 2)
+```
+
 ## Clusters
 
 # Map plot
@@ -1022,6 +1105,11 @@ proglangs %>%
 ## Spatial (ggmap)
 
 ## Contour plot
+
+```{r eval=FALSE, echo=FALSE}
+ggplot(faithfuld, aes(waiting, eruptions, z = density)) + 
+  geom_contour()
+```
 
 ## geom_sf?
 
