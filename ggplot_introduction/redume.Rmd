@@ -1050,11 +1050,11 @@ proglangs %>%
 
 - autoplot関数は ts オブジェクトに対して, 時系列分布を生成する.
 
-```{r eval=FALSE, echo=FALSE}
+```{r}
 # install.packages("ggfortify")
 library(ggfortify)
 
-# check data
+# check data (time series data)
 AirPassengers %>% str()
 
 # Plot 
@@ -1063,19 +1063,120 @@ autoplot(AirPassengers) +
   theme(plot.title = element_text(hjust=0.5))
 ```
 
-## Time seiries plot (for data frame)
+## Time seiries plot (for data frame) (練習問題5)
 
-```{r echo=FALSE}
-# geom_ribbon
+- 収益率を算出して, 時系列plotを作成してみよう!! 
+
+収益率は, 可処分所得の割合 (psavert)を用いて, 以下で計算する.
+
+$$
+\frac{ psavert_t - psavert_{t-1} }{psavert_{t-1}}
+$$
+
+```{r}
+economics %>% head()
+```
+
+- ヒント: geom_line(aes(x=??, y=??))を使う
+- lag()関数を使うと, 同じ列で1つ前の値を呼び出せる.
+
+```{r}
+c(1,2,3)
+lag(c(1,2,3))
+```
+
+```{r echo=FALSE} 
+economics2 <- 
+  economics %>% 
+  mutate(returns = (psavert-lag(psavert))/lag(psavert))
+
+ggplot(economics2, aes(x=date)) + 
+  geom_line(aes(y=returns)) + 
+  labs(title="Time Series Chart", 
+       subtitle="Returns Percentage from 'Economics' Dataset", 
+       caption="Source: Economics", 
+       y="Returns %")
+```
+
+- geom_ribbonは, geom_lineに対して補助的な範囲を与える. (信頼区間などを表示するときに便利)
+- 重なる順番が 重要になる場合もある! (逆にするとどうなるかな?)
+
+```{r}
+ggplot(economics2, aes(x=date)) + 
+  geom_ribbon(aes(ymin=returns-0.1, ymax=returns+0.1), fill= "grey70") +
+  geom_line(aes(y=returns)) 
 ```
 
 ## Multiple Time seiries plot 
 
+- 複数の直線を同時に描きたいとき, 以下のように書くと全体でx=dateを定義, 1つ目のplotでy=psavert, 2つ目のplotでy=uempmedを描く! 
+- 問題点: 色を変えたり, ラベルをつけるのが面倒..
+
+```{r}
+ggplot(economics2, aes(x=date)) + 
+  geom_line(aes(y=psavert)) +
+  geom_line(aes(y=uempmed))
+```
+
+- gather()を使って, データを変形しよう!!
+
+```{r}
+economics %>% 
+  select(date,psavert, uempmed) %>% 
+  gather(key, value, -date) %>% 
+  ggplot(aes(x=date, y=value, color=key)) +
+  geom_line() +
+  labs(title="Time Series of Returns Percentage", 
+       subtitle="Drawn from Long Data format", 
+       caption="Source: Economics", 
+       y="Returns %", 
+       color=NULL)
+```
+
 ## Stacked Area Chart
 
-## Seasonal Plot
+```{r}
+ggplot(economics, aes(x=date)) + 
+  geom_area(aes(y=psavert+uempmed, fill="psavert")) + 
+  geom_area(aes(y=uempmed, fill="uempmed")) + 
+  labs(title="Area Chart of Returns Percentage", 
+       subtitle="From Wide Data format", 
+       caption="Source: Economics", 
+       y="Returns %") 
+```
 
 ## Calender Heatmap
+
+- 前処理
+
+```{r}
+library(scales)
+library(zoo)
+
+df <- read_csv("https://raw.githubusercontent.com/selva86/datasets/master/yahoo.csv")
+head(df)
+
+# convert data
+df1 <- df %>% 
+  dplyr::group_by(year, month) %>% 
+  dplyr::mutate(monthweek = 1 + week - min(week))
+```
+
+- geom_tileでheat mapを作成する. 
+- **facet_grid**: は任意の列でグラフを分割する. この場合, x軸にmonthweek, y軸にweekdayf, 枠内部の色の度合いを終わり値で操作し, それとは別に, 年と月でグラフを分割する. 年固有の特徴や月特徴の固有, 全体的な成長率などを多角的に可視化することができる.
+
+```{r}
+# heatmap
+ggplot(df1, aes(monthweek, weekdayf, fill = VIX.Close)) + 
+  geom_tile(colour = "white") + 
+  facet_grid(year~monthf) + 
+  scale_fill_gradient(low="red", high="green") +
+  labs(x="Week of Month",
+       y="",
+       title = "Time-Series Calendar Heatmap", 
+       subtitle="Yahoo Closing Price", 
+       fill="Close")
+```
 
 # Groups plot
 
