@@ -1147,12 +1147,11 @@ ggplot(economics, aes(x=date)) +
 
 ## Calender Heatmap
 
-- 前処理
+- データの前処理
+
+株価データ曜日, 週目ごとの終値を可視化する
 
 ```{r}
-library(scales)
-library(zoo)
-
 df <- read_csv("https://raw.githubusercontent.com/selva86/datasets/master/yahoo.csv")
 head(df)
 
@@ -1164,6 +1163,7 @@ df1 <- df %>%
 
 - geom_tileでheat mapを作成する. 
 - **facet_grid**: は任意の列でグラフを分割する. この場合, x軸にmonthweek, y軸にweekdayf, 枠内部の色の度合いを終わり値で操作し, それとは別に, 年と月でグラフを分割する. 年固有の特徴や月特徴の固有, 全体的な成長率などを多角的に可視化することができる.
+(コードを区切って実行するとわかりやすい)
 
 ```{r}
 # heatmap
@@ -1184,12 +1184,15 @@ ggplot(df1, aes(monthweek, weekdayf, fill = VIX.Close)) +
 
 - 樹形図により階層的な構造を表す. 
 
-**ggdendrogram()の引数**
+- dist()関数は各カテゴリーの距離行列 (どのくらい似ているかを計算する)
+[参考url](https://www.marketechlabo.com/r-distance-clustering/)
 
-
-```{r eval=FALSE, echo=FALSE}
+```{r}
 # install.packages("ggdendro")
 library(ggdendro)
+
+# data 
+dist(USArrests) %>% head
 
  # hierarchical clustering
 hc <- hclust(dist(USArrests), "ave") 
@@ -1201,18 +1204,112 @@ ggdendrogram(hc, rotate = TRUE, size = 2)
 
 ## Clusters
 
+- 主成分分析と合わせて使える! (主成分分析とは多次元データを低次元データに縮約する方法のことである! )
+[参考url](https://data-science.gr.jp/implementation/ida_r_pca.html)
+
+- 多次元データとはこのような複数の特徴を持つデータ
+
+```{r}
+head(mtcars)
+```
+
+- 主成分分析やクラスタリングは以下のようなコードで簡単にできる!!
+
+```{r}
+# 主成分分析を行う
+df <- mtcars %>% 
+  prcomp()
+head(df$x)
+
+# data.frameに直して, kmeansでクラスター分類する
+df_pc <- data.frame(df$x) %>% 
+  mutate(
+    cluster = kmeans(df$x,centers = 3)$cluster)
+head(df_pc)
+```
+
+- geom_point: 主成分1と主成分2で散布図を作成する. 追加したクラスタリング結果で色分け
+- geom_encircle: filter()関数で, クラスターごとにデータを分けて, その領域を囲うような線を作成する.
+
+```{r}
+library(ggalt)
+library(ggfortify)
+
+# plot
+ggplot(df_pc, aes(PC1, PC2, col=factor(cluster))) +
+  geom_point(size=2) +   # draw points
+  labs(title="Iris Clustering", 
+       subtitle="With principal components PC1 and PC2 as X and Y axis",
+       caption="Source: mpg") + 
+  geom_encircle(
+    data = df_pc %>% filter(cluster == 1),
+    aes(x=PC1, y=PC2)) +   # draw circles
+  geom_encircle(
+    data = df_pc %>% filter(cluster == 2),
+    aes(x=PC1, y=PC2)) +  
+  geom_encircle(
+    data = df_pc %>% filter(cluster == 3),
+    aes(x=PC1, y=PC2))
+```
+
 # Map plot
 
 ## Spatial (ggmap)
 
+- **Google のAPIを導入しないといけないので, 皆さんの環境では動かないです. **
+
+```{r eval=FALSE}
+library(ggmap)
+library(ggalt)
+source('~/Desktop/settings/geo_setting.R')
+
+# Get kanamati 
+kanamati <- geocode("東京理科大学金町キャンパス")
+
+kanamati_map <-
+  get_map("東京理科大学金町キャンパス", 
+          zoom = 18,
+          maptype="hybrid")   
+
+# plot area and point 
+ggmap(kanamati_map) +
+  geom_point(data=kanamati, 
+             aes(x=lon,y=lat),
+             alpha = 0.7, 
+             size = 7, 
+             color = "tomato")
+```
+
+![test](./image/ggmap_image.png)
+
 ## Contour plot
 
-```{r eval=FALSE, echo=FALSE}
-ggplot(faithfuld, aes(waiting, eruptions, z = density)) + 
+- 等高線プロット
+
+x座標, y座標に加えてz座標を与える. z座標の数値によって等高線を描く. (例: 緯度経度と人口など)
+
+x座標, y座標の全組み合わせが必要で, 100✖100のデータの場合には10000行必要になる.
+
+```{r}
+faithfuld %>% 
+  ggplot(aes(x=waiting, y=eruptions, z=density)) + 
   geom_contour()
 ```
 
-## geom_sf?
+- expand_gridと組み合わせる!!
+
+expand_grid()関数は, 重複の内組みあわせを作成する.
+
+```{r}
+expand_grid(x=1:3,y=1:2)
+```
+
+```{r}
+expand_grid(x=1:100, y=1:100) %>% 
+  mutate(z = x * y) %>% 
+  ggplot(aes(x=x,y=y,z=z)) + 
+  geom_contour(aes(colour = ..level..))
+```
 
 # 課題
 
@@ -1286,8 +1383,8 @@ p
 
 ## 課題3
 
-- 時系列plotを月ごとに集計して表してみよう!
+- 時系列plotを月ごとに集計して表してみよう! (group_by, summarize)
 
 ## 課題4
 
-- 複数の図を並べてみる (gridExtra)
+- 複数の図を並べてみる (gridExtra, facet_grid)
