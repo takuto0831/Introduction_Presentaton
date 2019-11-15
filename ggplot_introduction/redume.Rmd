@@ -1261,7 +1261,7 @@ ggplot(df_pc, aes(PC1, PC2, col=factor(cluster))) +
 ```{r eval=FALSE}
 library(ggmap)
 library(ggalt)
-source('~/Desktop/settings/geo_setting.R')
+source('~/Desktop/geo.R')
 
 # Get kanamati 
 kanamati <- geocode("東京理科大学金町キャンパス")
@@ -1383,8 +1383,31 @@ p
 
 ## 課題3
 
-- 時系列plotを月ごとに集計して表してみよう! (group_by, summarize)
+- 時系列plotを年ごとに集計して表してみよう! (group_by, summarize)
 
-## 課題4
+- lubridateパッケージのyear関数を使うと, date列から年の情報が抽出できます!!
+
+```{r}
+library(lubridate)
+
+economics %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  head
+```
+
+```{r echo=FALSE}
+economics %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  group_by(year) %>% 
+  summarise(psavert_mean = mean(psavert)) %>% 
+  ggplot(aes(x=year,y=psavert_mean)) +
+  geom_line()
+```
+
+
+## 応用課題
 
 - 複数の図を並べてみる (gridExtra, facet_grid)
+
+上記の関数を使うと, 複数のプロットを分割もしくは組み合わせて1つのプロットにすることができます!これまで作成した図を使ってプロットを作成してみよう！
+
