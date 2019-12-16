@@ -7,9 +7,133 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## DTW (Dynamic Time Warping)
+# アルゴリズムについて
 
-- 動的時間伸縮法
+## 動的時間伸縮法
 
 [wikipedia より]
-In time seires analysis, dynamic time warping (DTW) is one of the algorithms for measuring similarities in walking could be detected using DTW, even if one person was waking faster than the other, or if there were accelerations and decelerations during the course of an observation. DTW has been applied to temporal sequences of vieo, audio, and graphics data - indeed, any data that can be analyzed with DTW. A well known application has been automatic speech recognition, to cope with different speaking speeds. Other applications include speaker recognition
+In time seires analysis, dynamic time warping (DTW) is one of the algorithms for measuring similarities in walking could be detected using DTW, even if one person was waking faster than the other, or if there were accelerations and decelerations during the course of an observation. DTW has been applied to temporal sequences of vieo, audio, and graphics data - indeed, any data that can be analyzed with DTW. A well known application has been automatic speech recognition, to cope with different speaking speeds. Other applications include speaker recognition and online signature recognition. It can also be used in partial shape matching application. 
+
+## アルゴリズム概要
+
+- 各データ点に対して, 総当たりで距離を計算し, 要素がデータ点動詞の距離となる行列を作成
+
+- D[0][0]からD[m][n]までに通るpathのうち, 行列の要素の合計が最小になるpathを探索する. その時の最小和がDTW距離となる.
+
+## 特徴
+
+- 時系列のデータ長が異なる場合でも適用可能
+
+- 時間・位相がずれていても形状が似ていれば類似度は高くなる.
+
+- K-medoids: クラスタリングの手法でメジャーなk-meansと似た手法. クラスタの代表点をcentroid (重心)ではなくmedoidで選択する. medoidはクラスタ内のデータ点で, 同一クラスタ内の他の全ての点までの距離の総和が最小になる点のこと.
+
+k-means よりノイズや外れ値に強く, クラスタの代表点を実際のデータ点から選ぶので, 一度データ同士の距離を計算すれば, 再度距離行列を計算する必要がない.
+
+# サンプル
+
+## パッケージ
+
+```{r}
+#install.packages("TSclust")
+#install.packages("dtw")
+#install.packages("parallelDist")
+
+library(TSclust)
+library(dtw)
+library(parallelDist)
+library(fastcluster)
+library(tidyverse)
+```
+
+## データ生成
+
+```{r}
+random_walk <- function(x,t){
+  return(cumsum(rnorm(t)))
+}
+
+set.seed(1024)
+series_data <- map_dfc(1:100,random_walk,t=200)
+```
+
+## 可視化
+
+```{r}
+plot_data <- series_data %>% 
+  mutate(period = row_number()) %>%
+  gather(key = series, value = value,-period)
+g <- ggplot(plot_data,aes(x = period, y = value, group = series))
+g <- g + geom_line(stat="identity")
+g
+```
+
+## TSclust パッケージ
+
+```{r}
+tsclust_time <- system.time({
+  tsclust_dist <- TSclust::diss(series_data,"DTWARP")
+})
+tsclust_time["user.self"]
+```
+
+## dtw パッケージ
+
+```{r}
+dtw_time <- system.time({
+  dtw_dist <- dtw::dtwDist(t(series_data)) #dtwの場合は時系列を行として配置
+})
+dtw_time["user.self"]
+```
+
+## parallelDist パッケージ
+
+```{r}
+pardist_time <- system.time({
+  pardist_dist <- parallelDist::parDist(t(series_data),
+                                        method = "dtw",
+                                        step.pattern="symmetric2") #dtwのデフォルトと合わせる
+})
+pardist_time["user.self"]
+```
+
+## 結果の確認
+
+```{r}
+as.matrix(tsclust_dist)[1:10]
+as.matrix(dtw_dist)[1:10]
+as.matrix(pardist_dist)[1:10]
+```
+
+## hirachical clustering
+
+- 階層クラスタリング
+
+cutree関数: 上から順に3つ分類する.
+
+```{r}
+hc <- fastcluster::hclust(pardist_dist)
+plot(hc)
+trees <- cutree(hc,3)
+```
+
+- 
+
+```{r}
+cluster_data <- 
+  tibble(series = names(trees),
+         cluster = as.factor(trees))
+
+plot_data <- series_data %>% 
+  mutate(period = row_number()) %>%
+  gather(key = series, value = value,-period) %>%
+  left_join(cluster_data,by="series")
+
+g <- 
+  plot_data %>% 
+  ggplot(aes(x = period, y = value, 
+             group = series, col = cluster)) +
+  geom_line(stat="identity")
+g
+```
+
