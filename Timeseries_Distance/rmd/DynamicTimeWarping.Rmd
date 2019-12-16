@@ -1,0 +1,15 @@
+---
+title: "Dynamic Time Warping"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## DTW (Dynamic Time Warping)
+
+- 動的時間伸縮法
+
+[wikipedia より]
+In time seires analysis, dynamic time warping (DTW) is one of the algorithms for measuring similarities in walking could be detected using DTW, even if one person was waking faster than the other, or if there were accelerations and decelerations during the course of an observation. DTW has been applied to temporal sequences of vieo, audio, and graphics data - indeed, any data that can be analyzed with DTW. A well known application has been automatic speech recognition, to cope with different speaking speeds. Other applications include speaker recognition
