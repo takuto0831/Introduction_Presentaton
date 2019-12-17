@@ -1,0 +1,97 @@
+---
+title: "Dimensionaly Reduction"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+- 次元削減とは, データの次元数を減らすこと. 次元数はデータセットの特徴量の数と言い換えることができる.
+
+- データの圧縮, データの可視性を高める, 特徴量の削減に用いることができる.
+
+- PCA,(主成分分析), t-SNE, U-MAP,
+
+# プログラム
+
+## setting
+
+```{r}
+library(umap)
+library(tsne)
+library(Rtsne) # t-sneの高速版
+library(tidyverse)
+```
+
+- データセット
+
+```{r}
+iris_data <- iris %>% 
+  select_if(str_detect(colnames(.), "(Sepal)|(Petal)"))
+iris_labels <- iris %>% 
+  select(Species)
+```
+
+## PCA
+
+- model 
+
+```{r}
+iris_pca <- prcomp(iris_data)
+head(iris_pca$x)
+```
+
+- plot 
+
+```{r}
+iris_pca$x %>% 
+  as.data.frame() %>% 
+  mutate(label = iris$Species) %>% 
+  ggplot(aes(x=PC1, y=PC2, col=label)) +
+  geom_point()
+```
+
+## UMAP
+
+- model
+
+```{r}
+iris_umap <- umap(iris_data)
+head(iris_umap$layout)
+```
+
+- plot
+
+```{r}
+iris_umap$layout %>% 
+  as.data.frame() %>% 
+  mutate(label = iris$Species) %>% 
+  ggplot(aes(x=V1, y=V2, col=label)) +
+  geom_point()
+```
+
+## t-SNE
+
+- model
+
+```{r}
+iris_tsne <- tsne(iris_data)
+head(iris_tsne)
+```
+
+- plot
+
+```{r}
+iris_tsne %>% 
+  as.data.frame() %>% 
+  mutate(label = iris$Species) %>% 
+  ggplot(aes(x=V1, y=V2, col=label)) +
+  geom_point()
+```
+
+## Rtsne 
+
+- tsneパッケージの高速版, 主成分分析をしてから, t-SNEを実行している.
