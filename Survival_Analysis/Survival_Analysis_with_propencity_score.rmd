@@ -1,0 +1,223 @@
+---
+title: "Propensity Score & Survival Analysis"
+author: "Takuto Kotsubo"
+date: "12/19/2020"
+output: html_document
+---
+
+# 傾向スコア
+
+- 利用データ, モデル等は効果検証入に準拠しています.
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(MatchIt)
+library(Rcpp)
+library(broom)
+```
+
+## 利用データの確認
+
+- mail data
+
+```{r}
+# (3) データの読み込み 
+email_data <- read_csv("http://www.minethatdata.com/Kevin_Hillstrom_MineThatData_E-MailAnalytics_DataMiningChallenge_2008.03.20.csv")
+glimpse(email_data)
+
+# check segment vs channel
+email_data %>% tabyl(segment, channel)
+
+# check recency
+email_data %>% tabyl(recency)
+```
+
+```{r}
+# (4) データの準備
+male_df <- email_data %>%
+  filter(segment != "Womens E-Mail") %>% # 女性向けメール削除
+  mutate(treatment = ifelse(segment == "Mens E-Mail", 1, 0)) #介入を表すtreatment変数を追加
+
+# (5) セレクションバイアスのあるデータを作成
+## seedを固定
+set.seed(1)
+
+## 条件に反応するサンプルの量を半分にする
+obs_rate_c <- 0.5
+obs_rate_t <- 0.5
+## バイアスのあるデータを作成
+biased_data <- male_df %>%
+  mutate(obs_rate_c =
+           ifelse( (history > 300) | (recency < 6) |
+                     (channel == "Multichannel"), obs_rate_c, 1),
+         obs_rate_t =
+           ifelse( (history > 300) | (recency < 6) |
+                     (channel == "Multichannel"), 1, obs_rate_t),
+         random_number = runif(n = NROW(male_df))) %>%
+  filter( (treatment == 0 & random_number < obs_rate_c ) |
+            (treatment == 1 & random_number < obs_rate_t) )
+
+# check segment vs channel
+biased_data %>% tabyl(segment, channel)
+```
+
+- baisedの確認
+
+データに対して, 乱数によりbiasを発生させる
+
+```{r}
+# check treatment vs recency (元々のデータにbiasはない)
+male_df %>% tabyl(treatment, recency)
+# check treatment vs recency (biasを発生させた)
+biased_data %>% tabyl(treatment, recency)
+```
+
+## simple model
+
+本来はメールの介入により, 0.76$程度の効果が生まれる. しかし, biasedデータでは, 課題に評価されている. (効果検証入門 2.2.1章参考)
+
+- original data への適用
+
+```{r}
+base_model <- glm(data = male_df,
+                  formula = spend ~ treatment)
+base_model %>% 
+  tidy()
+```
+
+- biased data への適用
+
+```{r}
+ps_model <- glm(data = biased_data,
+                formula = spend ~ treatment)
+ps_model %>%
+  tidy()
+```
+
+## 傾向スコア
+
+- 傾向スコアを利用したマッチング
+
+```{r}
+m_near <- matchit(data = biased_data,
+                  formula = treatment ~ recency + history + channel,
+                  method = "nearest",
+                  replace = TRUE)
+summary(m_near)
+# data作成 
+matched_data <- match.data(m_near)
+# マッチング後のデータでの効果の推定
+PSM_result <- matched_data %>% 
+  lm(spend ~ treatment, data = .) %>% 
+  tidy()
+PSM_result
+```
+
+- IPW
+
+```{r}
+library(WeightIt)
+
+weighting <- weightit(data = biased_data,
+                      formula = treatment ~ recency + history + channel,
+                      method = "ps",
+                      estimand = "ATE")
+IPW_result <- lm(data = biased_data,
+                 formula = spend ~ treatment,
+                 weights = weighting$weights) %>% 
+  tidy()
+IPW_result
+```
+
+- 傾向スコアによる共変量のバランス確認
+
+```{r}
+library(cobalt)
+set.cobalt.options(binary = "std") # 平均の差を標準誤差で割る
+
+love.plot(m_near, 
+          thresholds = .1)
+love.plot(weighting, 
+          thresholds = .1, 
+          abs = TRUE)
+```
+
+
+# 生存時間解析への応用
+
+- library / function
+
+```{r}
+library(survival)
+library(ggfortify)
+
+# useful function
+SummaryToDataFrame <- function(df){
+  df$table %>%
+    as.data.frame() %>% 
+    tibble::rownames_to_column("feature") %>% 
+    mutate(exp_value = exp(Value)) %>% 
+    select(feature, value=Value, exp_value, everything()) %>% 
+    return()
+}
+
+```
+
+## 調査資料
+
+- [Rと生存時間分析](https://www1.doshisha.ac.jp/~mjin/R/Chap_36/36.html)
+- [Lifetime Value - 日経電子版での事業目標の管理](Lifetime Value - 日経電子版での事業目標の管理)
+
+サブスクのサービスで活用しやすい? ->金額の外れ値とか発生しなさそう.
+
+
+- [傾向スコアの各使用方法について](https://www.krsk-phs.com/entry/propensity_score_comparison)
+
+## sample data
+
+- 解釈について:
+time, statusはそれぞれ生存時間とイベント発生の有無を表す. イベント発生有無による, 生存時間がどの程度変化するか? この例だと, 性別により4.4倍程度イベント発生する確率が高まる.
+
+```{r}
+kidney %>% head
+
+# fit weibull
+fit <- survreg(formula = Surv(time, status) ~ sex + age + disease + frail, 
+               data = kidney,
+               dist = 'weibull')
+
+SummaryToDataFrame(summary(fit))
+```
+
+## 傾向スコアの生存時間解析への適用
+
+- ipwにより, 各変数によるイベント発生の有無を調整する.
+
+適切な調整なのかは微妙. 
+
+```{r}
+weighting <- weightit(data = kidney,
+                      formula = status ~ sex + age + disease + frail,
+                      method = "ps",
+                      estimand = "ATE")
+love.plot(weighting, 
+          thresholds = .1, 
+          abs = TRUE)
+```
+
+- 調整後のデータに適用. sex, frailとか結局効いてるのでちゃんと有効?
+
+```{r}
+fit_weight <- survreg(formula = Surv(time, status) ~ sex + age + disease + frail, 
+                      data = kidney,
+                      dist = 'weibull',
+                      weights = weighting$weights)
+
+SummaryToDataFrame(summary(fit_weight))
+```
+
